@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Painel da Lanchonete - Delivery Pro</title>
+
+  <style>
+    :root {
+      --bg: #050812;
+      --bg2: #09111f;
+      --panel: #101827;
+      --panel2: #0b1220;
+      --panel3: #111c30;
+      --border: #223450;
+      --border2: #2f4568;
+      --text: #f8fafc;
+      --muted: #93a4bd;
+      --muted2: #64748b;
+      --orange: #ff7a00;
+      --orange2: #ff3d00;
+      --green: #22c55e;
+      --green2: #16a34a;
+      --red: #ef4444;
+      --blue: #3b82f6;
+      --yellow: #f59e0b;
+      --purple: #8b5cf6;
+      --shadow: 0 26px 80px rgba(0, 0, 0, .42);
+      --soft: 0 16px 42px rgba(0, 0, 0, .26);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top right, rgba(255, 122, 0, .12), transparent 34%),
+        radial-gradient(circle at top left, rgba(59, 130, 246, .10), transparent 32%),
+        linear-gradient(135deg, var(--bg), var(--bg2));
+      color: var(--text);
+      font-family: Inter, Segoe UI, Arial, sans-serif;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    button, input, select, textarea { font-family: inherit; }
+
+    .app {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      border-right: 1px solid var(--border);
+      background: rgba(5, 8, 18, .94);
+      backdrop-filter: blur(18px);
+      padding: 22px 16px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      padding: 8px;
+    }
+
+    .logo {
+      width: 52px;
+      height: 52px;
+      border-radius: 18px;
+      display: grid;
+      place-items: center;
+      font-size: 25px;
+      background: linear-gradient(135deg, var(--orange), var(--orange2));
+      box-shadow: 0 20px 40px rgba(255, 96, 0, .24);
+    }
+
+    .brand h1 { margin: 0; font-size: 20px; line-height: 1.15; }
+    .brand span { display: block; color: var(--muted); font-size: 12px; margin-top: 4px; }
+
+    .nav { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+
+    .nav a {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 13px 14px;
+      border-radius: 16px;
+      color: #cbd5e1;
+      font-weight: 900;
+      border: 1px solid transparent;
+      transition: .18s ease;
+    }
+
+    .nav a:hover, .nav a.active {
+      background: linear-gradient(135deg, #111b2c, #16243a);
+      border-color: #2d4368;
+      color: #fff;
+      transform: translateX(2px);
+    }
+
+    .nav a.logout {
+      margin-top: 12px;
+      color: #fecaca;
+      background: #351217;
+      border-color: #6b1d29;
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 15px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: linear-gradient(180deg, #0d1628, #08101e);
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+      box-shadow: var(--soft);
+    }
+
+    .status-dot {
+      display: inline-flex;
+      width: 9px;
+      height: 9px;
+      border-radius: 99px;
+      background: var(--green);
+      box-shadow: 0 0 0 6px rgba(34, 197, 94, .12);
+      margin-right: 7px;
+    }
+
+    .content { min-width: 0; }
+
+    .topbar {
+      min-height: 86px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(5, 8, 18, .78);
+      backdrop-filter: blur(16px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 28px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      gap: 14px;
+    }
+
+    .page-title h2 { margin: 0; font-size: 25px; letter-spacing: -.4px; }
+    .page-title p { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+
+    .top-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+    .btn {
+      border: 0;
+      border-radius: 15px;
+      padding: 12px 15px;
+      color: #fff;
+      background: #192338;
+      border: 1px solid #263651;
+      font-weight: 950;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: .16s ease;
+      min-height: 44px;
+    }
+
+    .btn:hover { transform: translateY(-1px); filter: brightness(1.08); }
+    .btn.primary { background: linear-gradient(135deg, var(--orange), var(--orange2)); border: none; box-shadow: 0 16px 34px rgba(255, 96, 0, .22); }
+    .btn.green { background: #123521; border: 1px solid #1d6b3b; color: #bbf7d0; }
+    .btn.red { background: #351217; border: 1px solid #6b1d29; color: #fecaca; }
+    .btn.blue { background: #11294d; border: 1px solid #1d4f95; color: #bfdbfe; }
+    .btn.yellow { background: #3d2707; border: 1px solid #8a5a0a; color: #fde68a; }
+    .btn.purple { background: #24144d; border: 1px solid #5b35ad; color: #ddd6fe; }
+
+    .wrap { max-width: 1360px; margin: 0 auto; padding: 26px; }
+
+    .premium-banner {
+      border: 1px solid rgba(255, 122, 0, .30);
+      background:
+        linear-gradient(135deg, rgba(255,122,0,.16), rgba(59,130,246,.08)),
+        rgba(16, 24, 39, .86);
+      border-radius: 26px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .premium-banner h3 { margin: 0 0 6px; font-size: 20px; }
+    .premium-banner p { margin: 0; color: #cbd5e1; font-size: 13px; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat {
+      background: rgba(16, 24, 39, .92);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 21px;
+      box-shadow: var(--shadow);
+      min-height: 122px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat::after {
+      content: '';
+      position: absolute;
+      right: -26px;
+      top: -26px;
+      width: 88px;
+      height: 88px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.04);
+    }
+
+    .stat span { display: block; color: #b8c7e8; font-weight: 800; margin-bottom: 14px; }
+    .stat strong { font-size: 31px; letter-spacing: -.8px; }
+    .stat small { display: block; color: var(--muted2); margin-top: 8px; font-weight: 700; }
+
+    .section {
+      background: rgba(16, 24, 39, .92);
+      border: 1px solid var(--border);
+      border-radius: 26px;
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+
+    .section-head {
+      padding: 22px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .section-head h3 { margin: 0; font-size: 22px; }
+    .section-head p { margin: 7px 0 0; color: var(--muted); font-size: 13px; }
+    .section-body { padding: 22px; }
+
+    .filters { display: flex; gap: 10px; flex-wrap: wrap; }
+
+    .filter-pill {
+      padding: 10px 13px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: #0b1220;
+      color: #cbd5e1;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .filter-pill.active { background: #172542; border-color: #34537e; color: #fff; }
+
+    .orders-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+      gap: 16px;
+    }
+
+    .order-card {
+      background: linear-gradient(180deg, #101827, #0b1220);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: var(--soft);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .order-card::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 5px;
+      background: var(--blue);
+    }
+
+    .order-card.novo::before { background: var(--blue); }
+    .order-card.em_preparo::before { background: var(--yellow); }
+    .order-card.saiu_entrega::before { background: var(--purple); }
+
+    .order-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+    .order-head strong { font-size: 17px; }
+    .order-head span { display: block; color: #9db2d6; margin-top: 4px; font-size: 13px; }
+
+    .badge {
+      padding: 8px 11px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 1000;
+      white-space: nowrap;
+      border: 1px solid transparent;
+    }
+
+    .badge.novo { background: #0b2a55; color: #bfdbfe; border-color: #1d4f95; }
+    .badge.em_preparo { background: #432106; color: #fed7aa; border-color: #895b14; }
+    .badge.saiu_entrega { background: #2e1065; color: #ddd6fe; border-color: #5b35ad; }
+    .badge.finalizado { background: #06351d; color: #86efac; border-color: #18713b; }
+    .badge.cancelado { background: #3b1117; color: #fecaca; border-color: #7d2230; }
+
+    .timeline {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 7px;
+      margin-top: 2px;
+    }
+
+    .step {
+      height: 7px;
+      border-radius: 999px;
+      background: #1d2a40;
+      border: 1px solid #253550;
+    }
+
+    .step.on { background: linear-gradient(135deg, var(--orange), var(--orange2)); border-color: transparent; }
+
+    .info { display: grid; gap: 7px; color: #dbeafe; font-size: 13px; }
+    .info b { color: #fff; }
+
+    .items {
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 0;
+      display: grid;
+      gap: 8px;
+    }
+
+    .item-line { display: flex; justify-content: space-between; gap: 12px; color: #f8fafc; }
+    .item-line small { display: block; color: var(--muted); margin-top: 3px; }
+
+    .total {
+      color: #fbbf24;
+      font-size: 24px;
+      font-weight: 1000;
+      text-align: right;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 9px;
+      margin-top: auto;
+    }
+
+    .actions .wide { grid-column: span 2; }
+
+    .history-table { width: 100%; border-collapse: collapse; overflow: hidden; }
+    .history-table th, .history-table td { border-bottom: 1px solid var(--border); padding: 14px 10px; text-align: left; font-size: 14px; vertical-align: middle; }
+    .history-table th { color: #b8c7e8; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+
+    .empty {
+      border: 1px dashed var(--border);
+      border-radius: 20px;
+      padding: 34px;
+      color: #b8c7e8;
+      text-align: center;
+      background: rgba(7, 11, 18, .35);
+      width: 100%;
+    }
+
+    .toast {
+      position: fixed;
+      right: 22px;
+      bottom: 22px;
+      z-index: 99;
+      background: #0b1220;
+      border: 1px solid var(--border2);
+      color: #fff;
+      padding: 14px 16px;
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      display: none;
+      max-width: 360px;
+      font-weight: 800;
+    }
+
+    .toast.show { display: block; }
+    .mobile-menu { display: none; }
+
+    @media (max-width: 1080px) {
+      .stats { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 980px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar { position: fixed; left: -290px; top: 0; width: 280px; z-index: 40; transition: .2s ease; }
+      .sidebar.open { left: 0; }
+      .mobile-menu { display: inline-flex; }
+      .topbar { height: auto; min-height: 82px; padding: 16px; }
+      .stats { grid-template-columns: 1fr; }
+      .wrap { padding: 16px; }
+      .top-actions { justify-content: flex-end; }
+      .orders-grid { grid-template-columns: 1fr; }
+      .premium-banner { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <aside id="sidebar" class="sidebar">
+      <div class="brand">
+        <div class="logo">🍔</div>
+        <div>
+          <h1>Delivery Pro</h1>
+          <span>Painel da Lanchonete</span>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <a class="active" href="/admin">📊 Dashboard</a>
+        <a href="/admin/produtos">🍔 Produtos</a>
+        <a href="#pedidos">📦 Pedidos</a>
+        <a href="/admin/relatorio">📈 Relatórios</a>
+        <a href="#configuracoes" onclick="alert('Configurações será o próximo módulo premium.')">⚙ Configurações</a>
+        <a class="logout" href="/logout">🚪 Sair</a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <strong><span class="status-dot"></span>Sistema online</strong><br>
+        Operando localmente no notebook da loja.<br>
+        Pedidos atualizam automaticamente.<br>
+        Impressão ativa pelo painel.
+      </div>
+    </aside>
+
+    <main class="content">
+      <header class="topbar">
+        <button class="btn mobile-menu" onclick="toggleSidebar()">☰ Menu</button>
+
+        <div class="page-title">
+          <h2>📊 Dashboard Premium</h2>
+          <p>Pedidos em tempo real, impressão, preparo e entrega</p>
+        </div>
+
+        <div class="top-actions">
+          <button class="btn blue" onclick="fetchOrders()">🔄 Atualizar</button>
+          <a class="btn primary" href="/admin/produtos">🍔 Novo produto</a>
+          <a class="btn" href="/" target="_blank">Ver cardápio</a>
+        </div>
+      </header>
+
+      <div class="wrap">
+        <section class="premium-banner">
+          <div>
+            <h3>🚀 Operação em tempo real</h3>
+            <p>Agora o pedido fica no painel ao aceitar. Só sai dos ativos quando finalizar ou cancelar.</p>
+          </div>
+          <button class="btn yellow" onclick="window.print()">🧾 Imprimir tela</button>
+        </section>
+
+        <section class="stats">
+          <div class="stat">
+            <span>Pedidos hoje</span>
+            <strong id="stat-orders">0</strong>
+            <small>Total recebido no dia</small>
+          </div>
+
+          <div class="stat">
+            <span>Total vendido</span>
+            <strong id="stat-revenue">R$ 0,00</strong>
+            <small>Sem pedidos cancelados</small>
+          </div>
+
+          <div class="stat">
+            <span>Pedidos ativos</span>
+            <strong id="stat-active">0</strong>
+            <small>Novo, preparo e entrega</small>
+          </div>
+
+          <div class="stat">
+            <span>Novos pedidos</span>
+            <strong id="stat-new">0</strong>
+            <small>Aguardando aceite</small>
+          </div>
+        </section>
+
+        <section id="pedidos" class="section">
+          <div class="section-head">
+            <div>
+              <h3>📦 Pedidos ativos</h3>
+              <p>Novo → Em preparo → Saiu para entrega → Finalizado</p>
+            </div>
+
+            <div class="filters">
+              <button class="filter-pill active" onclick="setFilter('todos', this)">Todos</button>
+              <button class="filter-pill" onclick="setFilter('novo', this)">Novos</button>
+              <button class="filter-pill" onclick="setFilter('em_preparo', this)">Preparo</button>
+              <button class="filter-pill" onclick="setFilter('saiu_entrega', this)">Entrega</button>
+            </div>
+          </div>
+
+          <div class="section-body">
+            <div id="orders-body" class="orders-grid"></div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head">
+            <div>
+              <h3>🧾 Histórico do dia</h3>
+              <p>Pedidos recentes com status, total e impressão</p>
+            </div>
+          </div>
+
+          <div class="section-body">
+            <div id="history-list"></div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    let knownOrderIds = [];
+    let currentFilter = 'todos';
+    let cachedActiveOrders = [];
+
+    const ACTIVE_STATUS = ['novo', 'em_preparo', 'saiu_entrega'];
+
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('open');
+    }
+
+    function setFilter(filter, btn) {
+      currentFilter = filter;
+      document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderActiveOrders(cachedActiveOrders);
+    }
+
+    function money(value) {
+      return Number(value || 0).toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+      });
+    }
+
+    function statusLabel(status) {
+      const labels = {
+        novo: 'Novo',
+        em_preparo: 'Em preparo',
+        saiu_entrega: 'Saiu para entrega',
+        finalizado: 'Finalizado',
+        cancelado: 'Cancelado'
+      };
+      return labels[status] || status;
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+    function toast(message) {
+      const box = document.getElementById('toast');
+      box.textContent = message;
+      box.classList.add('show');
+      setTimeout(() => box.classList.remove('show'), 2800);
+    }
+
+    function playBeep() {
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const ctx = new AudioContext();
+        const oscillator = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(880, ctx.currentTime);
+        gain.gain.setValueAtTime(0.12, ctx.currentTime);
+
+        oscillator.connect(gain);
+        gain.connect(ctx.destination);
+
+        oscillator.start();
+        setTimeout(() => {
+          oscillator.stop();
+          ctx.close();
+        }, 450);
+      } catch (e) {}
+    }
+
+    async function fetchOrders() {
+      try {
+        const allResp = await fetch('/api/orders');
+
+        if (allResp.status === 401) {
+          window.location.href = '/admin';
+          return;
+        }
+
+        const allOrders = await allResp.json();
+        const activeOrders = allOrders.filter(o => ACTIVE_STATUS.includes(o.status));
+        const newOrders = allOrders.filter(o => o.status === 'novo');
+
+        const ids = newOrders.map(o => o.id);
+        const fresh = ids.filter(id => !knownOrderIds.includes(id));
+
+        if (fresh.length > 0 && knownOrderIds.length > 0) {
+          playBeep();
+          toast('🔔 Novo pedido recebido!');
+        }
+
+        knownOrderIds = ids;
+        cachedActiveOrders = activeOrders;
+
+        renderActiveOrders(activeOrders);
+        renderSummary(allOrders, newOrders, activeOrders);
+        renderHistory(allOrders);
+
+      } catch (err) {
+        document.getElementById('orders-body').innerHTML = '<div class="empty">Erro ao carregar pedidos.</div>';
+      }
+    }
+
+    function timeline(status) {
+      const level = status === 'novo' ? 1 : status === 'em_preparo' ? 2 : status === 'saiu_entrega' ? 3 : 0;
+      return `
+        <div class="timeline">
+          <div class="step ${level >= 1 ? 'on' : ''}"></div>
+          <div class="step ${level >= 2 ? 'on' : ''}"></div>
+          <div class="step ${level >= 3 ? 'on' : ''}"></div>
+        </div>
+      `;
+    }
+
+    function renderActionButtons(order) {
+      const printBtn = `
+        <button class="btn blue" onclick="printOrder(${order.id})">
+          🖨 Imprimir
+        </button>
+      `;
+
+      if (order.status === 'novo') {
+        return `
+          <button class="btn green" onclick="updateStatus(${order.id}, 'em_preparo')">✅ Aceitar</button>
+          ${printBtn}
+          <button class="btn red wide" onclick="updateStatus(${order.id}, 'cancelado')">❌ Cancelar</button>
+        `;
+      }
+
+      if (order.status === 'em_preparo') {
+        return `
+          <button class="btn purple" onclick="updateStatus(${order.id}, 'saiu_entrega')">🛵 Saiu para entrega</button>
+          ${printBtn}
+          <button class="btn green wide" onclick="updateStatus(${order.id}, 'finalizado')">✅ Finalizar</button>
+        `;
+      }
+
+      if (order.status === 'saiu_entrega') {
+        return `
+          <button class="btn green" onclick="updateStatus(${order.id}, 'finalizado')">✅ Finalizar</button>
+          ${printBtn}
+          <button class="btn red wide" onclick="updateStatus(${order.id}, 'cancelado')">❌ Cancelar</button>
+        `;
+      }
+
+      return printBtn;
+    }
+
+    function renderActiveOrders(orders) {
+      const box = document.getElementById('orders-body');
+
+      let list = orders;
+      if (currentFilter !== 'todos') {
+        list = orders.filter(o => o.status === currentFilter);
+      }
+
+      if (!list.length) {
+        box.innerHTML = '<div class="empty">Nenhum pedido ativo neste filtro.</div>';
+        return;
+      }
+
+      box.innerHTML = list.map(order => `
+        <article class="order-card ${order.status}">
+          <div class="order-head">
+            <div>
+              <strong>#${order.id} - ${escapeHtml(order.customer_name)}</strong>
+              <span>${escapeHtml(order.phone)}</span>
+            </div>
+            <span class="badge ${order.status}">${statusLabel(order.status)}</span>
+          </div>
+
+          ${timeline(order.status)}
+
+          <div class="info">
+            <div><b>Tipo:</b> ${escapeHtml(order.delivery_option)}</div>
+            ${order.address ? `<div><b>Endereço:</b> ${escapeHtml(order.address)}</div>` : ''}
+            <div><b>Pagamento:</b> ${escapeHtml(order.payment_method)}</div>
+            ${order.change_amount && Number(order.change_amount) > 0 ? `<div><b>Troco para:</b> ${money(order.change_amount)}</div>` : ''}
+            ${order.observations ? `<div><b>Obs:</b> ${escapeHtml(order.observations)}</div>` : ''}
+          </div>
+
+          <div class="items">
+            ${order.items.map(item => `
+              <div class="item-line">
+                <div>
+                  ${item.quantity}x ${escapeHtml(item.product_name)}
+                  ${item.note ? `<small>Obs: ${escapeHtml(item.note)}</small>` : ''}
+                </div>
+                <b>${money(item.price * item.quantity)}</b>
+              </div>
+            `).join('')}
+          </div>
+
+          <div class="total">Total: ${money(order.total)}</div>
+
+          <div class="actions">
+            ${renderActionButtons(order)}
+          </div>
+        </article>
+      `).join('');
+    }
+
+    function renderSummary(allOrders, newOrders, activeOrders) {
+      const today = new Date().toISOString().slice(0, 10);
+      const todays = allOrders.filter(o => o.created_at && o.created_at.startsWith(today));
+
+      const revenue = todays
+        .filter(o => o.status !== 'cancelado')
+        .reduce((acc, o) => acc + Number(o.total || 0), 0);
+
+      document.getElementById('stat-orders').textContent = todays.length;
+      document.getElementById('stat-revenue').textContent = money(revenue);
+      document.getElementById('stat-active').textContent = activeOrders.length;
+      document.getElementById('stat-new').textContent = newOrders.length;
+    }
+
+    function renderHistory(allOrders) {
+      const today = new Date().toISOString().slice(0, 10);
+      const todays = allOrders.filter(o => o.created_at && o.created_at.startsWith(today));
+      const box = document.getElementById('history-list');
+
+      if (!todays.length) {
+        box.innerHTML = '<div class="empty">Nenhum pedido hoje.</div>';
+        return;
+      }
+
+      box.innerHTML = `
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>Pedido</th>
+              <th>Cliente</th>
+              <th>Status</th>
+              <th>Pagamento</th>
+              <th>Total</th>
+              <th>Ação</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${todays.map(o => `
+              <tr>
+                <td>#${o.id}</td>
+                <td>${escapeHtml(o.customer_name)}</td>
+                <td><span class="badge ${o.status}">${statusLabel(o.status)}</span></td>
+                <td>${escapeHtml(o.payment_method)}</td>
+                <td>${money(o.total)}</td>
+                <td>
+                  <button class="btn blue" onclick="printOrder(${o.id})">🖨 Imprimir</button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    async function updateStatus(orderId, status) {
+      const resp = await fetch(`/api/orders/${orderId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+
+      if (resp.status === 401) {
+        window.location.href = '/admin';
+        return;
+      }
+
+      if (resp.ok) {
+        toast('✅ Status atualizado');
+      } else {
+        toast('❌ Erro ao atualizar status');
+      }
+
+      fetchOrders();
+    }
+
+    async function printOrder(orderId) {
+      try {
+        const resp = await fetch(`/api/orders/${orderId}/print`, {
+          method: 'POST'
+        });
+
+        if (resp.status === 401) {
+          window.location.href = '/admin';
+          return;
+        }
+
+        const data = await resp.json();
+        toast(data.message || '🖨 Pedido enviado para impressão.');
+      } catch (err) {
+        toast('❌ Erro ao imprimir pedido.');
+      }
+    }
+
+    setInterval(fetchOrders, 4000);
+    fetchOrders();
+  </script>
+</body>
+</html>

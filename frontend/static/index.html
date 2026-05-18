@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Delivery Lanchonete Pro</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="customer-page">
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">🍔</div>
+      <div>
+        <h1>Delivery Lanchonete Pro</h1>
+        <span>Cardápio online</span>
+      </div>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div>
+      <p class="badge">Aberto agora</p>
+      <h2>Peça seu lanche favorito</h2>
+      <p>Escolha os produtos, finalize o pedido e acompanhe pela lanchonete.</p>
+    </div>
+  </section>
+
+  <main class="layout">
+    <section class="menu-area">
+      <div class="section-title">
+        <h2>Cardápio</h2>
+        <p>Escolha por categoria</p>
+      </div>
+
+      <div id="category-tabs" class="category-tabs"></div>
+      <div id="menu-container" class="product-grid"></div>
+    </section>
+
+    <aside class="cart-panel">
+      <div class="cart-header">
+        <h2>Seu pedido</h2>
+        <span id="cart-count">0 itens</span>
+      </div>
+
+      <div id="cart-items" class="cart-items empty">
+        Nenhum item adicionado.
+      </div>
+
+      <div class="cart-total" id="cart-total">
+        Total: R$ 0,00
+      </div>
+
+      <div class="checkout">
+        <input id="customer_name" placeholder="Nome do cliente" />
+        <input id="phone" placeholder="Telefone / WhatsApp" />
+
+        <select id="delivery_option">
+          <option value="entrega">Entrega</option>
+          <option value="retirada">Retirada no balcão</option>
+        </select>
+
+        <input id="address" placeholder="Endereço completo" />
+
+        <select id="payment_method">
+          <option value="pix">Pix</option>
+          <option value="dinheiro">Dinheiro</option>
+          <option value="cartao">Cartão</option>
+        </select>
+
+        <input
+          id="change_amount"
+          type="number"
+          step="0.01"
+          placeholder="Troco para quanto?"
+          style="display:none"
+        />
+
+        <textarea
+          id="observations"
+          placeholder="Observações gerais do pedido"
+        ></textarea>
+
+        <button id="place-order-btn" class="primary-btn">
+          Finalizar pedido
+        </button>
+
+        <div id="order-feedback"></div>
+      </div>
+    </aside>
+  </main>
+
+  <script src="scripts.js"></script>
+</body>
+</html>

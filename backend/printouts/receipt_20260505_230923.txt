@@ -1,0 +1,16 @@
+=== Delivery Lanchonete Pro ===
+Pedido: #2
+Data: 05/05/2026 13:43:55
+
+Cliente: Alexandre Diniz
+Telefone: 37999660230
+Retirada no balcão
+Forma de pagamento: pix
+
+Itens:
+--------------------------------
+1x Combo 1              R$ 22.00
+--------------------------------
+Total: R$ 22.00
+
+Obrigado pela preferência!

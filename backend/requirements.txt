@@ -1,0 +1,5 @@
+flask>=2.3
+flask_sqlalchemy>=3.1
+flask_cors>=4.0
+python-escpos>=0.0.0; extra == 'print'  # optional for thermal printing
+reportlab>=3.6; extra == 'pdf'  # optional for PDF generation

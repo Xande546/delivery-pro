@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Produtos - Delivery Lanchonete Pro</title>
+  <style>
+    :root{--bg:#070b12;--panel:#101722;--panel2:#0c111b;--border:#223049;--text:#f8fafc;--muted:#94a3b8;--primary:#ff7a00;--primary2:#ff3d00;--green:#22c55e;--red:#ef4444;--blue:#3b82f6;--yellow:#f59e0b}*{box-sizing:border-box}body{margin:0;background:linear-gradient(135deg,#070b12,#0b1220);color:var(--text);font-family:Inter,Segoe UI,Arial,sans-serif}header{height:88px;border-bottom:1px solid var(--border);background:rgba(7,11,18,.92);display:flex;align-items:center;justify-content:space-between;padding:0 28px;position:sticky;top:0;z-index:10;backdrop-filter:blur(14px)}.brand{display:flex;align-items:center;gap:14px}.logo{width:48px;height:48px;border-radius:16px;background:linear-gradient(135deg,var(--primary),var(--primary2));display:grid;place-items:center;font-size:25px;box-shadow:0 18px 35px rgba(255,96,0,.22)}h1{font-size:22px;margin:0}.sub{color:var(--muted);font-size:13px;margin-top:4px}.top-actions{display:flex;gap:10px;align-items:center}a,button{font-family:inherit}.btn{border:0;border-radius:13px;padding:12px 16px;font-weight:800;cursor:pointer;color:#fff;background:#192338;border:1px solid #263651;text-decoration:none;display:inline-flex;align-items:center;gap:8px}.btn.primary{background:linear-gradient(135deg,var(--primary),var(--primary2));border:none}.btn.green{background:#123521;border:1px solid #1d6b3b;color:#bbf7d0}.btn.red{background:#351217;border:1px solid #6b1d29;color:#fecaca}.btn.blue{background:#11294d;border:1px solid #1d4f95;color:#bfdbfe}.wrap{max-width:1220px;margin:0 auto;padding:26px}.grid{display:grid;grid-template-columns:380px 1fr;gap:22px}.card{background:rgba(16,23,34,.92);border:1px solid var(--border);border-radius:24px;box-shadow:0 20px 65px rgba(0,0,0,.25)}.card-head{padding:22px;border-bottom:1px solid var(--border)}.card-head h2{margin:0;font-size:20px}.card-head p{margin:8px 0 0;color:var(--muted);font-size:13px}.card-body{padding:22px}label{display:block;color:#cbd5e1;font-weight:700;font-size:13px;margin:14px 0 8px}input,textarea,select{width:100%;background:#080d15;border:1px solid #24324b;color:#fff;border-radius:13px;padding:13px;outline:none}textarea{min-height:86px;resize:vertical}input:focus,textarea:focus,select:focus{border-color:var(--primary)}.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.switch{display:flex;align-items:center;gap:10px;margin:16px 0;color:#dbeafe;font-weight:700}.switch input{width:auto}.toolbar{display:flex;gap:12px;margin-bottom:18px;align-items:center}.search{flex:1}.products{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}.product{background:var(--panel2);border:1px solid var(--border);border-radius:20px;overflow:hidden;display:flex;flex-direction:column}.thumb{height:145px;background:linear-gradient(135deg,#172033,#0b1020);display:grid;place-items:center;color:#64748b;overflow:hidden;font-size:48px}.thumb img{width:100%;height:100%;object-fit:cover}.pbody{padding:16px;display:flex;flex-direction:column;gap:9px;flex:1}.p-title{font-size:17px;font-weight:900}.desc{color:var(--muted);font-size:13px;line-height:1.35;min-height:36px}.meta{display:flex;justify-content:space-between;align-items:center;gap:10px}.price{font-weight:1000;color:#fbbf24;font-size:20px}.badge{padding:7px 10px;border-radius:999px;font-size:12px;font-weight:900}.badge.on{background:#06351d;color:#86efac}.badge.off{background:#3b1117;color:#fecaca}.actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:auto}.category-box{display:flex;gap:8px;margin-top:10px}.category-box input{flex:1}.toast{position:fixed;right:24px;bottom:24px;background:#0b1220;border:1px solid var(--border);border-radius:16px;padding:16px 18px;box-shadow:0 20px 60px rgba(0,0,0,.45);display:none;z-index:20}.upload-box{border:1px dashed #334155;border-radius:18px;background:#080d15;padding:14px;display:grid;gap:12px}.upload-preview{height:190px;border-radius:16px;background:linear-gradient(135deg,#111827,#050816);border:1px solid #1f2a44;display:grid;place-items:center;overflow:hidden;color:#64748b;font-weight:800;text-align:center}.upload-preview img{width:100%;height:100%;object-fit:cover}.file-input{display:none}.upload-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.hint{font-size:12px;color:#94a3b8;line-height:1.4}.image-path{font-size:12px;color:#fbbf24;word-break:break-all;background:#0b1220;border:1px solid #223049;border-radius:12px;padding:10px;display:none}@media(max-width:900px){header{height:auto;padding:16px;align-items:flex-start;gap:12px;flex-direction:column}.top-actions{width:100%;flex-wrap:wrap}.grid{grid-template-columns:1fr}.wrap{padding:16px}.row{grid-template-columns:1fr}.upload-actions{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="logo">🍔</div>
+      <div>
+        <h1>Cadastro de Produtos</h1>
+        <div class="sub">Admin nível iFood — cadastrar, editar, imagem e ativar/desativar</div>
+      </div>
+    </div>
+    <div class="top-actions">
+      <a class="btn" href="/admin">← Painel</a>
+      <a class="btn" href="/" target="_blank">Ver cardápio</a>
+      <a class="btn red" href="/logout">Sair</a>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="grid">
+      <section class="card">
+        <div class="card-head">
+          <h2 id="form-title">Novo produto</h2>
+          <p>Cadastre produtos sem editar código.</p>
+        </div>
+        <div class="card-body">
+          <input type="hidden" id="product-id">
+
+          <label>Nome do produto</label>
+          <input id="name" placeholder="Ex: X-Bacon Especial">
+
+          <label>Descrição</label>
+          <textarea id="description" placeholder="Ex: Hambúrguer, bacon, queijo, alface..."></textarea>
+
+          <div class="row">
+            <div>
+              <label>Preço</label>
+              <input id="price" placeholder="Ex: 24,90">
+            </div>
+            <div>
+              <label>Categoria</label>
+              <select id="category_id"></select>
+            </div>
+          </div>
+
+          <label>Imagem do produto</label>
+          <div class="upload-box">
+            <div id="previewBox" class="upload-preview">🍔<br>Pré-visualização</div>
+            <input type="file" id="imageFile" class="file-input" accept="image/*" onchange="previewImage(event)">
+            <input type="hidden" id="image">
+            <div class="upload-actions">
+              <button class="btn blue" type="button" onclick="document.getElementById('imageFile').click()">📁 Procurar imagem</button>
+              <button class="btn" type="button" onclick="clearImage()">Remover</button>
+            </div>
+            <div class="hint">Escolha uma imagem do computador. Ao salvar, ela será enviada para <b>frontend/static/uploads</b>.</div>
+            <div id="imagePath" class="image-path"></div>
+          </div>
+
+          <label class="switch"><input id="active" type="checkbox" checked> Produto ativo no cardápio</label>
+
+          <button class="btn primary" style="width:100%;justify-content:center" onclick="saveProduct()">Salvar produto</button>
+          <button class="btn" style="width:100%;justify-content:center;margin-top:10px" onclick="clearForm()">Limpar formulário</button>
+
+          <hr style="border-color:#223049;margin:24px 0">
+
+          <h3 style="margin:0 0 6px">Nova categoria</h3>
+          <div class="sub">Ex: Sobremesas, Açaí, Pastéis</div>
+          <div class="category-box">
+            <input id="new-category" placeholder="Nome da categoria">
+            <button class="btn green" onclick="createCategory()">Criar</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>Produtos cadastrados</h2>
+          <p>Controle o cardápio em tempo real.</p>
+        </div>
+        <div class="card-body">
+          <div class="toolbar">
+            <input class="search" id="search" placeholder="Pesquisar produto..." oninput="renderProducts()">
+            <button class="btn blue" onclick="loadAll()">Atualizar</button>
+          </div>
+          <div id="products" class="products"></div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    let products = [];
+    let categories = [];
+
+    function money(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}
+
+    function showToast(msg){
+      const t=document.getElementById('toast');
+      t.textContent=msg;
+      t.style.display='block';
+      setTimeout(()=>t.style.display='none',3000)
+    }
+
+    function imgSrc(path){
+      if(!path)return '';
+      if(path.startsWith('http'))return path;
+      if(path.startsWith('/'))return path;
+      if(path.startsWith('images/'))return '/' + path;
+      if(path.startsWith('uploads/'))return '/' + path;
+      return '/images/' + path;
+    }
+
+    async function loadAll(){
+      const [catRes,prodRes]=await Promise.all([
+        fetch('/api/admin/categories'),
+        fetch('/api/admin/products')
+      ]);
+      if(catRes.status===401||prodRes.status===401){window.location.href='/admin';return}
+      categories=await catRes.json();
+      products=await prodRes.json();
+      renderCategories();
+      renderProducts();
+    }
+
+    function renderCategories(){
+      const sel=document.getElementById('category_id');
+      sel.innerHTML='';
+      categories.forEach(c=>{
+        const opt=document.createElement('option');
+        opt.value=c.id;
+        opt.textContent=c.name;
+        sel.appendChild(opt)
+      })
+    }
+
+    function renderProducts(){
+      const box=document.getElementById('products');
+      const q=document.getElementById('search').value.toLowerCase().trim();
+      const filtered=products.filter(p=>p.name.toLowerCase().includes(q)||(p.description||'').toLowerCase().includes(q));
+      box.innerHTML='';
+      if(filtered.length===0){box.innerHTML='<div class="sub">Nenhum produto encontrado.</div>';return}
+      filtered.forEach(p=>{
+        const cat=categories.find(c=>Number(c.id)===Number(p.category_id));
+        const div=document.createElement('div');
+        div.className='product';
+        div.innerHTML=`
+          <div class="thumb">${p.image?`<img src="${imgSrc(p.image)}" onerror="this.style.display='none';this.parentElement.innerHTML='🍔';">`:'🍔'}</div>
+          <div class="pbody">
+            <div class="meta"><div class="p-title">${p.name}</div><span class="badge ${p.active?'on':'off'}">${p.active?'Ativo':'Inativo'}</span></div>
+            <div class="desc">${p.description||'Sem descrição'}</div>
+            <div class="meta"><span class="price">${money(p.price)}</span><span class="sub">${cat?cat.name:'Sem categoria'}</span></div>
+            <div class="actions"><button class="btn blue" onclick="editProduct(${p.id})">Editar</button><button class="btn ${p.active?'red':'green'}" onclick="toggleProduct(${p.id})">${p.active?'Desativar':'Ativar'}</button></div>
+          </div>`;
+        box.appendChild(div)
+      })
+    }
+
+    function setPreview(path){
+      const box=document.getElementById('previewBox');
+      const imagePath=document.getElementById('imagePath');
+      if(path){
+        box.innerHTML=`<img src="${imgSrc(path)}" onerror="this.parentElement.innerHTML='🍔<br>Imagem não encontrada'">`;
+        imagePath.textContent=path;
+        imagePath.style.display='block';
+      }else{
+        box.innerHTML='🍔<br>Pré-visualização';
+        imagePath.textContent='';
+        imagePath.style.display='none';
+      }
+    }
+
+    function previewImage(event){
+      const file=event.target.files[0];
+      if(!file)return;
+      const reader=new FileReader();
+      reader.onload=function(e){document.getElementById('previewBox').innerHTML=`<img src="${e.target.result}">`};
+      reader.readAsDataURL(file);
+    }
+
+    function clearImage(){
+      document.getElementById('imageFile').value='';
+      document.getElementById('image').value='';
+      setPreview('');
+    }
+
+    async function uploadSelectedImage(){
+      const fileInput=document.getElementById('imageFile');
+      if(!fileInput.files || !fileInput.files[0]){
+        return document.getElementById('image').value || '';
+      }
+
+      const formData=new FormData();
+      formData.append('image', fileInput.files[0]);
+
+      const res=await fetch('/api/admin/upload-image',{method:'POST',body:formData});
+      const data=await res.json();
+      if(!res.ok){throw new Error(data.error || 'Erro ao enviar imagem')}
+      document.getElementById('image').value=data.path;
+      document.getElementById('imageFile').value='';
+      setPreview(data.path);
+      return data.path;
+    }
+
+    function editProduct(id){
+      const p=products.find(x=>x.id===id);
+      if(!p)return;
+      document.getElementById('form-title').textContent='Editando produto #'+id;
+      document.getElementById('product-id').value=p.id;
+      document.getElementById('name').value=p.name;
+      document.getElementById('description').value=p.description||'';
+      document.getElementById('price').value=String(p.price).replace('.',',');
+      document.getElementById('category_id').value=p.category_id;
+      document.getElementById('image').value=p.image||'';
+      document.getElementById('imageFile').value='';
+      setPreview(p.image||'');
+      document.getElementById('active').checked=!!p.active;
+      window.scrollTo({top:0,behavior:'smooth'})
+    }
+
+    function clearForm(){
+      document.getElementById('form-title').textContent='Novo produto';
+      document.getElementById('product-id').value='';
+      document.getElementById('name').value='';
+      document.getElementById('description').value='';
+      document.getElementById('price').value='';
+      clearImage();
+      document.getElementById('active').checked=true
+    }
+
+    async function saveProduct(){
+      try{
+        const imagePath=await uploadSelectedImage();
+        const id=document.getElementById('product-id').value;
+        const payload={
+          name:document.getElementById('name').value,
+          description:document.getElementById('description').value,
+          price:document.getElementById('price').value,
+          category_id:document.getElementById('category_id').value,
+          image:imagePath,
+          active:document.getElementById('active').checked
+        };
+        const url=id?`/api/admin/products/${id}`:'/api/admin/products';
+        const method=id?'PUT':'POST';
+        const res=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+        const data=await res.json();
+        if(!res.ok){showToast(data.error||'Erro ao salvar produto');return}
+        showToast(id?'Produto atualizado com sucesso.':'Produto criado com sucesso.');
+        clearForm();
+        await loadAll();
+      }catch(err){
+        showToast(err.message || 'Erro ao salvar produto')
+      }
+    }
+
+    async function toggleProduct(id){
+      const res=await fetch(`/api/admin/products/${id}/toggle`,{method:'POST'});
+      if(!res.ok){showToast('Erro ao alterar produto');return}
+      showToast('Status atualizado.');
+      await loadAll()
+    }
+
+    async function createCategory(){
+      const name=document.getElementById('new-category').value.trim();
+      if(!name){showToast('Digite o nome da categoria');return}
+      const res=await fetch('/api/admin/categories',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
+      const data=await res.json();
+      if(!res.ok){showToast(data.error||'Erro ao criar categoria');return}
+      document.getElementById('new-category').value='';
+      showToast('Categoria criada.');
+      await loadAll()
+    }
+
+    loadAll();
+  </script>
+</body>
+</html>
