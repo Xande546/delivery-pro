@@ -27,11 +27,18 @@ def create_app(test_config: Dict[str, Any] | None = None) -> Flask:
         static_url_path='',
     )
 
+    database_url = os.environ.get('DATABASE_URL')
+
+    if database_url:
+        # Render/Supabase podem entregar a URL começando com postgres://.
+        # SQLAlchemy espera postgresql://.
+        database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    else:
+        database_url = 'sqlite:///' + os.path.join(os.path.dirname(__file__), 'data.sqlite')
+
     app.config.from_mapping(
         SECRET_KEY=os.environ.get('SECRET_KEY', 'delivery-lanchonete-pro-secret'),
-        SQLALCHEMY_DATABASE_URI='sqlite:///' + os.path.join(
-            os.path.dirname(__file__), 'data.sqlite'
-        ),
+        SQLALCHEMY_DATABASE_URI=database_url,
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         MAX_CONTENT_LENGTH=8 * 1024 * 1024,
     )
@@ -41,6 +48,10 @@ def create_app(test_config: Dict[str, Any] | None = None) -> Flask:
 
     db.init_app(app)
     CORS(app)
+
+    # Garante que as tabelas sejam criadas também quando rodar no Render/Gunicorn.
+    with app.app_context():
+        db.create_all()
 
     # =========================
     # LOGIN ADMIN
@@ -346,8 +357,4 @@ def create_app(test_config: Dict[str, Any] | None = None) -> Flask:
 
 if __name__ == '__main__':
     app = create_app()
-
-    with app.app_context():
-        db.create_all()
-
     app.run(host='0.0.0.0', port=5000, debug=True)
