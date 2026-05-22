@@ -2,8 +2,32 @@ const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const toast=t=>{const e=$('#toast'); if(!e)return alert(t); e.textContent=t; e.classList.add('show'); setTimeout(()=>e.classList.remove('show'),2600)};
 let state={products:[],orders:[],cart:JSON.parse(localStorage.getItem('cart')||'[]'),category:'Todos',deliveryType:'retirada'};
-async function api(path,opt={}){const paths=[path,path.startsWith('/api')?path:'/api'+path];let err;for(const p of paths){try{const r=await fetch(p,{...opt,headers:opt.body instanceof FormData?{}:{'Content-Type':'application/json',...(opt.headers||{})}});if(r.ok)return r.status===204?null:await r.json();let body='';try{body=await r.text()}catch(_){}err=new Error(r.status+' '+p+(body?' :: '+body.slice(0,240):''))}catch(e){err=e}}throw err}
-async function getAny(paths){for(const p of paths){try{return await api(p)}catch(e){}}return []}
+function endpointVariants(path){
+  const clean=path.startsWith('/')?path:'/'+path;
+  const set=new Set([clean]);
+  if(!clean.startsWith('/api/')) set.add('/api'+clean);
+  if(clean.startsWith('/api/')) set.add(clean.replace('/api',''));
+  return [...set];
+}
+async function api(path,opt={}){
+  const paths=endpointVariants(path);
+  let err;
+  for(const p of paths){
+    try{
+      const r=await fetch(p,{...opt,headers:opt.body instanceof FormData?{}:{'Content-Type':'application/json',...(opt.headers||{})}});
+      if(r.ok)return r.status===204?null:await r.json();
+      let body='';try{body=await r.text()}catch(_){}
+      err=new Error(r.status+' '+p+(body?' :: '+body.slice(0,240):''));
+    }catch(e){err=e}
+  }
+  throw err;
+}
+async function getAny(paths){
+  for(const p of paths){
+    try{return await api(p)}catch(e){console.warn('Endpoint não respondeu:',p,e.message)}
+  }
+  return [];
+}
 function normProduct(p){return{id:p.id,name:p.name||p.nome||'Produto',price:Number(p.price??p.preco??0),category:p.category||p.categoria||p.category_name||'Outros',description:p.description||p.descricao||'',image_url:p.image_url||p.image||p.imagem||'',active:p.active!==false}}
 function normOrder(o){return{id:o.id,customer_name:o.customer_name||o.nome_cliente||o.name||'Cliente',customer_phone:o.customer_phone||o.phone||'',customer_address:o.customer_address||o.address||'',payment_method:o.payment_method||o.payment||'',total:Number(o.total||o.total_amount||0),status:String(o.status||'pending').toLowerCase(),created_at:o.created_at||'',items:o.items||o.order_items||[]}}
 function img(p){if(p.image_url)return p.image_url;return ''}
@@ -27,8 +51,20 @@ function setupDeliveryChoice(){
   apply();
 }
 
-async function loadProducts(){const raw=await getAny(['/products','/produtos']);const arr=Array.isArray(raw)?raw:(raw.products||raw.data||[]);state.products=arr.map(normProduct).filter(p=>p.active!==false)}
-async function loadOrders(){const raw=await getAny(['/orders','/pedidos']);const arr=Array.isArray(raw)?raw:(raw.orders||raw.data||[]);state.orders=arr.map(normOrder)}
+async function loadProducts(){
+  const raw=await getAny(['/products','/produtos','/menu','/cardapio','/items','/product','/api/products','/api/produtos','/api/menu','/api/cardapio']);
+  const arr=Array.isArray(raw)?raw:(raw.products||raw.produtos||raw.items||raw.data||raw.results||[]);
+  state.products=arr.map(normProduct).filter(p=>p.active!==false);
+  if(!state.products.length){
+    state.products=[{id:'demo-x-tudo',name:'X-Tudo',description:'Pão, hambúrguer, queijo, presunto, ovo e salada.',price:25,category:'Lanches',image_url:'',active:true}];
+    toast('Produtos não carregaram da API. Mostrando item temporário para teste visual.');
+  }
+}
+async function loadOrders(){
+  const raw=await getAny(['/orders','/pedidos','/api/orders','/api/pedidos']);
+  const arr=Array.isArray(raw)?raw:(raw.orders||raw.pedidos||raw.data||raw.results||[]);
+  state.orders=arr.map(normOrder);
+}
 function renderCats(){const el=$('#categoryList');if(!el)return;const cats=['Todos',...new Set(state.products.map(p=>p.category).filter(Boolean))];el.innerHTML=cats.map(c=>`<button class="cat ${c===state.category?'active':''}" data-c="${c}">${c}</button>`).join('');$$('.cat').forEach(b=>b.onclick=()=>{state.category=b.dataset.c;renderCats();renderStore()})}
 function renderStore(){const grid=$('#productGrid');if(!grid)return;const q=($('#searchInput')?.value||'').toLowerCase();const list=state.products.filter(p=>(state.category==='Todos'||p.category===state.category)&&`${p.name} ${p.description} ${p.category}`.toLowerCase().includes(q));$('#productCounter').textContent=list.length+' itens';grid.innerHTML=list.map(p=>`<article class="product-card"><div class="p-img" ${img(p)?`style="background-image:url('${img(p)}')"`:''}>${img(p)?'':'🍔'}</div><div class="p-info"><h3>${p.name}</h3><p>${p.description||'Produto especial da casa.'}</p><div class="price-row"><b class="price">${money(p.price)}</b><button class="btn primary" onclick="addCart('${p.id}')">Adicionar</button></div></div></article>`).join('')||'<div class="table-card">Nenhum produto encontrado.</div>'}
 window.addCart=id=>{const p=state.products.find(x=>String(x.id)===String(id));if(!p)return;const i=state.cart.find(x=>String(x.id)===String(id));i?i.qty++:state.cart.push({...p,qty:1});saveCart();toast('Produto adicionado')};
@@ -48,11 +84,11 @@ async function finishOrder(){
   if(!phone)return toast('Informe o WhatsApp.');
   if(state.deliveryType==='entrega'&&!address)return toast('Informe o endereço para entrega.');
 
-  const basePayload={
+  const finalAddress=state.deliveryType==='entrega'?address:'Retirada no balcão';
+  const originalPayload={
     customer_name:name,
     customer_phone:phone,
-    customer_address:state.deliveryType==='entrega'?address:'Retirada no balcão',
-    delivery_type:state.deliveryType,
+    customer_address:finalAddress,
     payment_method:payment,
     notes,
     total,
@@ -60,24 +96,28 @@ async function finishOrder(){
   };
 
   const attempts=[
-    basePayload,
-    {...basePayload, delivery_method:state.deliveryType, address:basePayload.customer_address},
-    {name,phone,address:basePayload.customer_address,delivery_type:state.deliveryType,payment_method:payment,notes,total,items},
-    {customer_name:name,customer_phone:phone,customer_address:basePayload.customer_address,payment_method:payment,notes,total_amount:total,items}
+    originalPayload,
+    {...originalPayload, delivery_type:state.deliveryType},
+    {...originalPayload, delivery_method:state.deliveryType, address:finalAddress},
+    {name,phone,address:finalAddress,delivery_type:state.deliveryType,payment_method:payment,notes,total,items},
+    {customer_name:name,customer_phone:phone,customer_address:finalAddress,payment_method:payment,notes,total_amount:total,items}
   ];
 
   let lastErr=null;
-  for(const payload of attempts){
-    try{
-      await api('/orders',{method:'POST',body:JSON.stringify(payload)});
-      state.cart=[];
-      saveCart();
-      $('#cartDrawer').classList.remove('open');
-      $('#customerAddress').value='';
-      $('#orderNotes').value='';
-      toast('Pedido enviado com sucesso!');
-      return;
-    }catch(e){lastErr=e;console.error('Falha ao enviar pedido com payload:',payload,e)}
+  const orderPaths=['/orders','/pedidos','/api/orders','/api/pedidos'];
+  for(const path of orderPaths){
+    for(const payload of attempts){
+      try{
+        await api(path,{method:'POST',body:JSON.stringify(payload)});
+        state.cart=[];
+        saveCart();
+        $('#cartDrawer').classList.remove('open');
+        $('#customerAddress').value='';
+        $('#orderNotes').value='';
+        toast('Pedido enviado com sucesso!');
+        return;
+      }catch(e){lastErr=e;console.error('Falha ao enviar pedido:',path,payload,e)}
+    }
   }
   toast('Erro ao enviar pedido. Veja o log do Render.');
   console.error('Último erro ao enviar pedido:',lastErr);
