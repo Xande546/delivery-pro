@@ -1,12 +1,32 @@
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const toast=t=>{const e=$('#toast'); if(!e)return alert(t); e.textContent=t; e.classList.add('show'); setTimeout(()=>e.classList.remove('show'),2600)};
-let state={products:[],orders:[],cart:JSON.parse(localStorage.getItem('cart')||'[]'),category:'Todos'};
-async function api(path,opt={}){const paths=[path,path.startsWith('/api')?path:'/api'+path];let err;for(const p of paths){try{const r=await fetch(p,{...opt,headers:opt.body instanceof FormData?{}:{'Content-Type':'application/json',...(opt.headers||{})}});if(r.ok)return r.status===204?null:await r.json();err=new Error(r.status+' '+p)}catch(e){err=e}}throw err}
+let state={products:[],orders:[],cart:JSON.parse(localStorage.getItem('cart')||'[]'),category:'Todos',deliveryType:'retirada'};
+async function api(path,opt={}){const paths=[path,path.startsWith('/api')?path:'/api'+path];let err;for(const p of paths){try{const r=await fetch(p,{...opt,headers:opt.body instanceof FormData?{}:{'Content-Type':'application/json',...(opt.headers||{})}});if(r.ok)return r.status===204?null:await r.json();let body='';try{body=await r.text()}catch(_){}err=new Error(r.status+' '+p+(body?' :: '+body.slice(0,240):''))}catch(e){err=e}}throw err}
 async function getAny(paths){for(const p of paths){try{return await api(p)}catch(e){}}return []}
 function normProduct(p){return{id:p.id,name:p.name||p.nome||'Produto',price:Number(p.price??p.preco??0),category:p.category||p.categoria||p.category_name||'Outros',description:p.description||p.descricao||'',image_url:p.image_url||p.image||p.imagem||'',active:p.active!==false}}
 function normOrder(o){return{id:o.id,customer_name:o.customer_name||o.nome_cliente||o.name||'Cliente',customer_phone:o.customer_phone||o.phone||'',customer_address:o.customer_address||o.address||'',payment_method:o.payment_method||o.payment||'',total:Number(o.total||o.total_amount||0),status:String(o.status||'pending').toLowerCase(),created_at:o.created_at||'',items:o.items||o.order_items||[]}}
 function img(p){if(p.image_url)return p.image_url;return ''}
+
+function setupDeliveryChoice(){
+  const box=$('#deliveryChoice');
+  const address=$('#customerAddress');
+  if(!box||!address)return;
+  const apply=()=>{
+    $$('.delivery-option').forEach(b=>b.classList.toggle('active',b.dataset.type===state.deliveryType));
+    if(state.deliveryType==='entrega'){
+      address.classList.remove('hidden');
+      address.placeholder='Endereço completo para entrega';
+    }else{
+      address.classList.add('hidden');
+      address.value='';
+      address.placeholder='Endereço completo para entrega';
+    }
+  };
+  $$('.delivery-option').forEach(b=>b.onclick=()=>{state.deliveryType=b.dataset.type;apply()});
+  apply();
+}
+
 async function loadProducts(){const raw=await getAny(['/products','/produtos']);const arr=Array.isArray(raw)?raw:(raw.products||raw.data||[]);state.products=arr.map(normProduct).filter(p=>p.active!==false)}
 async function loadOrders(){const raw=await getAny(['/orders','/pedidos']);const arr=Array.isArray(raw)?raw:(raw.orders||raw.data||[]);state.orders=arr.map(normOrder)}
 function renderCats(){const el=$('#categoryList');if(!el)return;const cats=['Todos',...new Set(state.products.map(p=>p.category).filter(Boolean))];el.innerHTML=cats.map(c=>`<button class="cat ${c===state.category?'active':''}" data-c="${c}">${c}</button>`).join('');$$('.cat').forEach(b=>b.onclick=()=>{state.category=b.dataset.c;renderCats();renderStore()})}
@@ -15,7 +35,53 @@ window.addCart=id=>{const p=state.products.find(x=>String(x.id)===String(id));if
 function saveCart(){localStorage.setItem('cart',JSON.stringify(state.cart));renderCart()}
 function renderCart(){const c=state.cart.reduce((s,i)=>s+i.qty,0),t=state.cart.reduce((s,i)=>s+i.qty*i.price,0);if($('#cartCount'))$('#cartCount').textContent=c;if($('#cartTotal'))$('#cartTotal').textContent=money(t);const el=$('#cartItems');if(!el)return;el.innerHTML=state.cart.map(i=>`<div class="cart-line"><div><b>${i.name}</b><br><span class="muted">${money(i.price)}</span></div><div class="qty"><button onclick="qty('${i.id}',-1)">-</button><b>${i.qty}</b><button onclick="qty('${i.id}',1)">+</button></div></div>`).join('')||'<p class="muted">Carrinho vazio.</p>'}
 window.qty=(id,d)=>{const i=state.cart.find(x=>String(x.id)===String(id));if(!i)return;i.qty+=d;if(i.qty<=0)state.cart=state.cart.filter(x=>String(x.id)!==String(id));saveCart()}
-async function finishOrder(){if(!state.cart.length)return toast('Adicione produtos ao carrinho.');const payload={customer_name:$('#customerName').value,customer_phone:$('#customerPhone').value,customer_address:$('#customerAddress').value,payment_method:$('#paymentMethod').value,notes:$('#orderNotes').value,total:state.cart.reduce((s,i)=>s+i.qty*i.price,0),items:state.cart.map(i=>({product_id:i.id,quantity:i.qty,price:i.price,name:i.name}))};if(!payload.customer_name)return toast('Informe o nome.');try{await api('/orders',{method:'POST',body:JSON.stringify(payload)});state.cart=[];saveCart();$('#cartDrawer').classList.remove('open');toast('Pedido enviado com sucesso!')}catch(e){console.error(e);toast('Erro ao enviar pedido. Confira endpoint /orders.')}}
+async function finishOrder(){
+  if(!state.cart.length)return toast('Adicione produtos ao carrinho.');
+  const name=$('#customerName').value.trim();
+  const phone=$('#customerPhone').value.trim();
+  const address=$('#customerAddress').value.trim();
+  const payment=$('#paymentMethod').value;
+  const notes=$('#orderNotes').value.trim();
+  const total=state.cart.reduce((s,i)=>s+i.qty*i.price,0);
+  const items=state.cart.map(i=>({product_id:i.id,quantity:i.qty,price:i.price,name:i.name}));
+  if(!name)return toast('Informe o nome.');
+  if(!phone)return toast('Informe o WhatsApp.');
+  if(state.deliveryType==='entrega'&&!address)return toast('Informe o endereço para entrega.');
+
+  const basePayload={
+    customer_name:name,
+    customer_phone:phone,
+    customer_address:state.deliveryType==='entrega'?address:'Retirada no balcão',
+    delivery_type:state.deliveryType,
+    payment_method:payment,
+    notes,
+    total,
+    items
+  };
+
+  const attempts=[
+    basePayload,
+    {...basePayload, delivery_method:state.deliveryType, address:basePayload.customer_address},
+    {name,phone,address:basePayload.customer_address,delivery_type:state.deliveryType,payment_method:payment,notes,total,items},
+    {customer_name:name,customer_phone:phone,customer_address:basePayload.customer_address,payment_method:payment,notes,total_amount:total,items}
+  ];
+
+  let lastErr=null;
+  for(const payload of attempts){
+    try{
+      await api('/orders',{method:'POST',body:JSON.stringify(payload)});
+      state.cart=[];
+      saveCart();
+      $('#cartDrawer').classList.remove('open');
+      $('#customerAddress').value='';
+      $('#orderNotes').value='';
+      toast('Pedido enviado com sucesso!');
+      return;
+    }catch(e){lastErr=e;console.error('Falha ao enviar pedido com payload:',payload,e)}
+  }
+  toast('Erro ao enviar pedido. Veja o log do Render.');
+  console.error('Último erro ao enviar pedido:',lastErr);
+}
 function st(s){if(['novo','recebido','pending'].includes(s))return'pending';if(['preparo','preparing','em preparo'].includes(s))return'preparing';if(['pronto','ready'].includes(s))return'ready';if(['entregue','delivered','finalizado'].includes(s))return'delivered';return'pending'}
 function orderCard(o){return`<article class="order-card"><h4>#${o.id} ${o.customer_name}</h4><p>${money(o.total)} ${o.customer_phone?' • '+o.customer_phone:''}</p><select class="status-select" onchange="setStatus('${o.id}',this.value)"><option value="pending" ${st(o.status)==='pending'?'selected':''}>Novo</option><option value="preparing" ${st(o.status)==='preparing'?'selected':''}>Preparando</option><option value="ready" ${st(o.status)==='ready'?'selected':''}>Pronto</option><option value="delivered" ${st(o.status)==='delivered'?'selected':''}>Entregue</option></select></article>`}
 function renderAdmin(){if(!$('#kanbanBoard'))return;const rev=state.orders.reduce((s,o)=>s+o.total,0);$('#kpiOrders').textContent=state.orders.length;$('#kpiRevenue').textContent=money(rev);$('#kpiPending').textContent=state.orders.filter(o=>st(o.status)==='pending').length;$('#kpiAvg').textContent=money(state.orders.length?rev/state.orders.length:0);const cols=[['pending','Novos'],['preparing','Preparando'],['ready','Prontos'],['delivered','Entregues']];$('#kanbanBoard').innerHTML=cols.map(([k,n])=>`<div class="kanban-col"><h3>${n}</h3>${state.orders.filter(o=>st(o.status)===k).map(orderCard).join('')||'<p class="muted">Sem pedidos</p>'}</div>`).join('')}
@@ -26,7 +92,7 @@ window.editProduct=p=>fillForm(p);
 window.delProduct=async id=>{if(!confirm('Excluir produto?'))return;try{await api('/products/'+id,{method:'DELETE'});toast('Produto excluído');await initProducts()}catch(e){toast('Seu backend ainda não tem DELETE de produto.')}};
 async function saveProduct(e){e.preventDefault();const f=e.target,fd=new FormData(f),id=fd.get('id');let body;if(fd.get('image')&&fd.get('image').size){body=fd}else{const o=Object.fromEntries(fd.entries());delete o.image;o.price=Number(o.price);o.active=!!f.elements.active?.checked;body=JSON.stringify(o)}try{await api('/products'+(id?'/'+id:''),{method:id?'PUT':'POST',body});toast(id?'Produto atualizado':'Produto cadastrado');f.reset();if(f.elements.active)f.elements.active.checked=true;await initProducts()}catch(err){console.error(err);toast('Endpoint de produtos não aceitou salvar. Não mexi no backend.')}}
 function renderReport(){if(!$('#reportOrders'))return;const rev=state.orders.reduce((s,o)=>s+o.total,0);$('#reportOrders').textContent=state.orders.length;$('#reportRevenue').textContent=money(rev);$('#reportList').innerHTML=state.orders.map(o=>`<div class="cart-line"><b>#${o.id} ${o.customer_name}</b><span>${money(o.total)}</span></div>`).join('')||'<p class="muted">Sem pedidos.</p>'}
-async function initClient(){await loadProducts();renderCats();renderStore();renderCart();$('#searchInput')?.addEventListener('input',renderStore);$('#clearSearch')?.addEventListener('click',()=>{$('#searchInput').value='';renderStore()});$('#openCartBtn')?.addEventListener('click',()=>$('#cartDrawer').classList.add('open'));$('#closeCartBtn')?.addEventListener('click',()=>$('#cartDrawer').classList.remove('open'));$('#finishOrderBtn')?.addEventListener('click',finishOrder)}
+async function initClient(){await loadProducts();renderCats();renderStore();renderCart();setupDeliveryChoice();$('#searchInput')?.addEventListener('input',renderStore);$('#clearSearch')?.addEventListener('click',()=>{$('#searchInput').value='';renderStore()});$('#openCartBtn')?.addEventListener('click',()=>$('#cartDrawer').classList.add('open'));$('#closeCartBtn')?.addEventListener('click',()=>$('#cartDrawer').classList.remove('open'));$('#finishOrderBtn')?.addEventListener('click',finishOrder)}
 async function initAdmin(){await loadOrders();renderAdmin();renderReport()}
 async function initProducts(){await loadProducts();renderProductAdmin();$('#adminProductSearch')?.addEventListener('input',renderProductAdmin);$('#adminCategoryFilter')?.addEventListener('change',renderProductAdmin);$('#productForm')&&($('#productForm').onsubmit=saveProduct);$('#newProductBtn')&&($('#newProductBtn').onclick=()=>fillForm({active:true}))}
 (async()=>{try{if($('#productGrid'))await initClient();if($('#kanbanBoard')){await initAdmin();$('#refreshAdminBtn')?.addEventListener('click',initAdmin);setInterval(initAdmin,15000)}if($('#adminProducts'))await initProducts();if($('#reportOrders')){await loadOrders();renderReport()}}catch(e){console.error(e);toast('Não consegui carregar a API. Veja os logs do Render.')}})();
