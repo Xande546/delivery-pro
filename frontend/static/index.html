@@ -1,94 +1,72 @@
-<!DOCTYPE html>
-<html lang="pt-br">
+<!doctype html>
+<html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#ea1d2c" />
   <title>Delivery Lanchonete Pro</title>
+  <link rel="manifest" href="manifest.webmanifest" />
   <link rel="stylesheet" href="styles.css" />
 </head>
-<body class="customer-page">
-  <header class="topbar">
-    <div class="brand">
-      <div class="logo">🍔</div>
-      <div>
-        <h1>Delivery Lanchonete Pro</h1>
-        <span>Cardápio online</span>
-      </div>
+<body class="client-page">
+  <header class="topbar glass">
+    <div>
+      <span class="eyebrow">Delivery</span>
+      <h1>Lanchonete Pro</h1>
     </div>
+    <button class="cart-pill" id="openCartBtn">🛒 <span id="cartCount">0</span></button>
   </header>
 
-  <section class="hero">
-    <div>
-      <p class="badge">Aberto agora</p>
-      <h2>Peça seu lanche favorito</h2>
-      <p>Escolha os produtos, finalize o pedido e acompanhe pela lanchonete.</p>
-    </div>
-  </section>
-
-  <main class="layout">
-    <section class="menu-area">
-      <div class="section-title">
-        <h2>Cardápio</h2>
-        <p>Escolha por categoria</p>
+  <main class="app-shell">
+    <section class="hero-card">
+      <div>
+        <span class="badge">Aberto agora</span>
+        <h2>Seu pedido quentinho, rápido e sem complicação.</h2>
+        <p>Escolha seus lanches, acompanhe o carrinho e finalize em poucos toques.</p>
       </div>
-
-      <div id="category-tabs" class="category-tabs"></div>
-      <div id="menu-container" class="product-grid"></div>
     </section>
 
-    <aside class="cart-panel">
-      <div class="cart-header">
-        <h2>Seu pedido</h2>
-        <span id="cart-count">0 itens</span>
+    <section class="search-card">
+      <input id="searchInput" type="search" placeholder="Buscar produto, combo, bebida..." autocomplete="off" />
+    </section>
+
+    <nav class="category-scroll" id="categoryList"></nav>
+
+    <section class="section-head">
+      <div>
+        <span class="eyebrow">Cardápio</span>
+        <h2>Produtos</h2>
       </div>
+      <span id="productCounter" class="muted"></span>
+    </section>
 
-      <div id="cart-items" class="cart-items empty">
-        Nenhum item adicionado.
-      </div>
-
-      <div class="cart-total" id="cart-total">
-        Total: R$ 0,00
-      </div>
-
-      <div class="checkout">
-        <input id="customer_name" placeholder="Nome do cliente" />
-        <input id="phone" placeholder="Telefone / WhatsApp" />
-
-        <select id="delivery_option">
-          <option value="entrega">Entrega</option>
-          <option value="retirada">Retirada no balcão</option>
-        </select>
-
-        <input id="address" placeholder="Endereço completo" />
-
-        <select id="payment_method">
-          <option value="pix">Pix</option>
-          <option value="dinheiro">Dinheiro</option>
-          <option value="cartao">Cartão</option>
-        </select>
-
-        <input
-          id="change_amount"
-          type="number"
-          step="0.01"
-          placeholder="Troco para quanto?"
-          style="display:none"
-        />
-
-        <textarea
-          id="observations"
-          placeholder="Observações gerais do pedido"
-        ></textarea>
-
-        <button id="place-order-btn" class="primary-btn">
-          Finalizar pedido
-        </button>
-
-        <div id="order-feedback"></div>
-      </div>
-    </aside>
+    <section class="product-grid" id="productGrid"></section>
   </main>
 
+  <aside class="cart-drawer" id="cartDrawer" aria-hidden="true">
+    <div class="cart-panel">
+      <div class="cart-header">
+        <h2>Meu carrinho</h2>
+        <button class="icon-btn" id="closeCartBtn">✕</button>
+      </div>
+      <div id="cartItems" class="cart-items"></div>
+      <div class="checkout-box">
+        <div class="total-row"><span>Total</span><strong id="cartTotal">R$ 0,00</strong></div>
+        <input id="customerName" placeholder="Seu nome" />
+        <input id="customerPhone" placeholder="Telefone / WhatsApp" />
+        <input id="customerAddress" placeholder="Endereço ou Retirada no balcão" />
+        <select id="paymentMethod">
+          <option value="Pix">Pix</option>
+          <option value="Cartão">Cartão</option>
+          <option value="Dinheiro">Dinheiro</option>
+        </select>
+        <textarea id="orderNotes" placeholder="Observações do pedido"></textarea>
+        <button class="primary-btn" id="finishOrderBtn">Finalizar pedido</button>
+      </div>
+    </div>
+  </aside>
+
+  <div class="toast" id="toast"></div>
   <script src="scripts.js"></script>
 </body>
 </html>

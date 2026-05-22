@@ -1,415 +1,46 @@
-let cart = [];
-let productsCache = [];
-let currentCategory = 'all';
+const API_CANDIDATES = ["", "/api"];
+const money = v => Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const qs = s => document.querySelector(s);
+const qsa = s => [...document.querySelectorAll(s)];
+const state = { products: [], categories: ["Todos"], activeCategory: "Todos", cart: JSON.parse(localStorage.getItem("cart") || "[]"), orders: [] };
 
-document.addEventListener('DOMContentLoaded', () => {
-  loadMenu();
-  bindFormEvents();
-});
-
-function money(value) {
-  return Number(value || 0).toLocaleString('pt-BR', {
-    style: 'currency',
-    currency: 'BRL'
-  });
+function toast(msg){ const el=qs("#toast"); if(!el) return alert(msg); el.textContent=msg; el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),2600); }
+async function apiFetch(path, opts={}){
+  let lastErr;
+  for(const base of API_CANDIDATES){
+    try{
+      const r = await fetch(base + path, { headers: opts.body instanceof FormData ? {} : {"Content-Type":"application/json"}, ...opts });
+      if(r.ok) return r.status === 204 ? null : await r.json();
+      lastErr = new Error(`${r.status} ${base+path}`);
+    }catch(e){ lastErr=e; }
+  }
+  throw lastErr || new Error("API indisponível");
 }
+async function safeGet(paths){ for(const p of paths){ try{return await apiFetch(p)}catch(e){} } return []; }
+function normProduct(p){ return { id:p.id, name:p.name||p.nome||"Produto", description:p.description||p.descricao||"", price:Number(p.price ?? p.preco ?? 0), category:p.category||p.categoria||p.category_name||"Outros", image_url:p.image_url||p.image||p.imagem||"images/xburger.png" }; }
+function normOrder(o){ return { id:o.id, customer_name:o.customer_name||o.nome_cliente||o.name||"Cliente", customer_phone:o.customer_phone||o.phone||"", total:Number(o.total||o.total_amount||0), status:(o.status||"pending").toLowerCase(), created_at:o.created_at||o.created||"", items:o.items||o.order_items||[] }; }
 
-function imgSrc(path) {
-
-  if (!path) return '';
-
-  if (path.startsWith('http')) {
-    return path;
-  }
-
-  if (path.startsWith('uploads/')) {
-    return '/' + path;
-  }
-
-  if (path.startsWith('/uploads/')) {
-    return path;
-  }
-
-  if (path.startsWith('images/')) {
-    return '/' + path;
-  }
-
-  if (path.startsWith('/images/')) {
-    return path;
-  }
-
-  return '/images/' + path;
+async function loadProducts(){
+  const raw = await safeGet(["/products", "/produtos"]);
+  state.products = Array.isArray(raw) ? raw.map(normProduct) : (raw.products||[]).map(normProduct);
+  state.categories = ["Todos", ...new Set(state.products.map(p=>p.category).filter(Boolean))];
 }
-
-async function loadMenu() {
-
-  try {
-
-    const [catRes, prodRes] = await Promise.all([
-      fetch('/api/categories'),
-      fetch('/api/products')
-    ]);
-
-    const categories = await catRes.json();
-
-    productsCache = await prodRes.json();
-
-    renderTabs(categories);
-
-    renderProducts(categories);
-
-  } catch (err) {
-
-    document.getElementById('menu-container').innerHTML =
-      '<div class="empty-state">Erro ao carregar cardápio.</div>';
-  }
-}
-
-function renderTabs(categories) {
-
-  const tabs = document.getElementById('category-tabs');
-
-  tabs.innerHTML =
-    `<button class="tab active" data-cat="all">Todos</button>` +
-    categories.map(c =>
-      `<button class="tab" data-cat="${c.id}">${c.name}</button>`
-    ).join('');
-
-  tabs.querySelectorAll('.tab').forEach(btn => {
-
-    btn.addEventListener('click', () => {
-
-      currentCategory = btn.dataset.cat;
-
-      tabs.querySelectorAll('.tab')
-        .forEach(b => b.classList.remove('active'));
-
-      btn.classList.add('active');
-
-      renderProducts(categories);
-    });
-  });
-}
-
-function renderProducts(categories) {
-
-  const box = document.getElementById('menu-container');
-
-  const list =
-    currentCategory === 'all'
-      ? productsCache
-      : productsCache.filter(
-          p => String(p.category_id) === String(currentCategory)
-        );
-
-  if (!list.length) {
-
-    box.innerHTML =
-      '<div class="empty-state">Nenhum produto disponível.</div>';
-
-    return;
-  }
-
-  box.innerHTML = list.map(p => `
-
-    <article class="product-card">
-
-      <div class="product-image">
-
-        ${
-          p.image
-            ? `<img
-                src="${imgSrc(p.image)}"
-                alt="${p.name}"
-                style="
-                  width:100%;
-                  height:100%;
-                  object-fit:cover;
-                "
-              >`
-            : emojiForProduct(p.name)
-        }
-
-      </div>
-
-      <div class="product-body">
-
-        <h3>${p.name}</h3>
-
-        <p>${p.description || 'Produto da casa'}</p>
-
-        <strong>${money(p.price)}</strong>
-
-        <input
-          id="note-${p.id}"
-          class="item-note"
-          placeholder="Observação: sem cebola, ponto da carne..."
-        />
-
-        <button onclick="addToCart(${p.id})">
-          Adicionar
-        </button>
-
-      </div>
-
-    </article>
-
-  `).join('');
-}
-
-function emojiForProduct(name) {
-
-  const n = name.toLowerCase();
-
-  if (n.includes('batata')) return '🍟';
-
-  if (n.includes('suco')) return '🍊';
-
-  if (n.includes('refri') || n.includes('bebida')) return '🥤';
-
-  if (n.includes('combo')) return '🍔🍟';
-
-  return '🍔';
-}
-
-function addToCart(productId) {
-
-  const product = productsCache.find(
-    p => p.id === productId
-  );
-
-  if (!product) return;
-
-  const note =
-    document.getElementById(`note-${productId}`)
-      ?.value.trim() || '';
-
-  const existing = cart.find(
-    i => i.product_id === productId && i.note === note
-  );
-
-  if (existing) {
-
-    existing.quantity += 1;
-
-  } else {
-
-    cart.push({
-      product_id: product.id,
-      product_name: product.name,
-      price: product.price,
-      quantity: 1,
-      note
-    });
-  }
-
-  const noteInput =
-    document.getElementById(`note-${productId}`);
-
-  if (noteInput) noteInput.value = '';
-
-  updateCart();
-}
-
-function updateCart() {
-
-  const box = document.getElementById('cart-items');
-
-  const count = cart.reduce(
-    (acc, i) => acc + i.quantity,
-    0
-  );
-
-  const total = cart.reduce(
-    (acc, i) => acc + i.price * i.quantity,
-    0
-  );
-
-  document.getElementById('cart-count').textContent =
-    `${count} ${count === 1 ? 'item' : 'itens'}`;
-
-  document.getElementById('cart-total').textContent =
-    `Total: ${money(total)}`;
-
-  if (!cart.length) {
-
-    box.className = 'cart-items empty';
-
-    box.textContent = 'Nenhum item adicionado.';
-
-    return;
-  }
-
-  box.className = 'cart-items';
-
-  box.innerHTML = cart.map((item, index) => `
-
-    <div class="cart-item">
-
-      <div>
-
-        <strong>${item.product_name}</strong>
-
-        ${
-          item.note
-            ? `<span>Obs: ${item.note}</span>`
-            : ''
-        }
-
-      </div>
-
-      <div class="qty-control">
-
-        <button onclick="changeQty(${index}, -1)">
-          -
-        </button>
-
-        <b>${item.quantity}</b>
-
-        <button onclick="changeQty(${index}, 1)">
-          +
-        </button>
-
-      </div>
-
-      <em>${money(item.price * item.quantity)}</em>
-
-    </div>
-
-  `).join('');
-}
-
-function changeQty(index, delta) {
-
-  cart[index].quantity += delta;
-
-  if (cart[index].quantity <= 0) {
-    cart.splice(index, 1);
-  }
-
-  updateCart();
-}
-
-function bindFormEvents() {
-
-  const delivery =
-    document.getElementById('delivery_option');
-
-  const address =
-    document.getElementById('address');
-
-  delivery.addEventListener('change', () => {
-
-    address.style.display =
-      delivery.value === 'entrega'
-        ? 'block'
-        : 'none';
-  });
-
-  const payment =
-    document.getElementById('payment_method');
-
-  const change =
-    document.getElementById('change_amount');
-
-  payment.addEventListener('change', () => {
-
-    change.style.display =
-      payment.value === 'dinheiro'
-        ? 'block'
-        : 'none';
-  });
-
-  document
-    .getElementById('place-order-btn')
-    .addEventListener('click', placeOrder);
-}
-
-async function placeOrder() {
-
-  const feedback =
-    document.getElementById('order-feedback');
-
-  if (!cart.length) {
-    return alert('Adicione pelo menos um item.');
-  }
-
-  const data = {
-
-    customer_name:
-      document.getElementById('customer_name')
-        .value.trim(),
-
-    phone:
-      document.getElementById('phone')
-        .value.trim(),
-
-    delivery_option:
-      document.getElementById('delivery_option')
-        .value,
-
-    address:
-      document.getElementById('address')
-        .value.trim(),
-
-    payment_method:
-      document.getElementById('payment_method')
-        .value,
-
-    change_amount:
-      document.getElementById('change_amount')
-        .value || 0,
-
-    observations:
-      document.getElementById('observations')
-        .value.trim(),
-
-    items: cart.map(i => ({
-      product_id: i.product_id,
-      quantity: i.quantity,
-      note: i.note
-    }))
-  };
-
-  if (!data.customer_name || !data.phone) {
-    return alert('Informe nome e telefone.');
-  }
-
-  if (
-    data.delivery_option === 'entrega' &&
-    !data.address
-  ) {
-    return alert('Informe o endereço.');
-  }
-
-  const resp = await fetch('/api/order', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(data)
-  });
-
-  const result = await resp.json();
-
-  if (resp.ok) {
-
-    feedback.innerHTML = `
-      <div class="success-msg">
-        Pedido enviado com sucesso! Nº ${result.order_id}
-      </div>
-    `;
-
-    cart = [];
-
-    updateCart();
-
-  } else {
-
-    feedback.innerHTML = `
-      <div class="error-msg">
-        ${result.error || 'Erro ao enviar pedido.'}
-      </div>
-    `;
-  }
-}
+function renderCategories(){ const el=qs("#categoryList"); if(!el) return; el.innerHTML = state.categories.map(c=>`<button class="category-btn ${c===state.activeCategory?'active':''}" data-cat="${c}">${c}</button>`).join(""); qsa(".category-btn").forEach(b=>b.onclick=()=>{state.activeCategory=b.dataset.cat;renderCategories();renderProducts();}); }
+function productImage(p){ if(!p.image_url) return "images/xburger.png"; if(p.image_url.startsWith("http")||p.image_url.startsWith("/")) return p.image_url; return p.image_url; }
+function renderProducts(){ const grid=qs("#productGrid"); if(!grid) return; const term=(qs("#searchInput")?.value||"").toLowerCase(); const list=state.products.filter(p=>(state.activeCategory==="Todos"||p.category===state.activeCategory) && `${p.name} ${p.description} ${p.category}`.toLowerCase().includes(term)); qs("#productCounter").textContent=`${list.length} itens`; grid.innerHTML=list.map(p=>`<article class="product-card"><div class="product-img" style="background-image:url('${productImage(p)}')"></div><div class="product-info"><h3>${p.name}</h3><p>${p.description||"Produto selecionado da casa."}</p><div class="price-row"><span class="price">${money(p.price)}</span><button class="primary-btn small" onclick="addToCart(${p.id})">Adicionar</button></div></div></article>`).join("") || `<div class="admin-card">Nenhum produto encontrado.</div>`; }
+window.addToCart = id => { const p=state.products.find(x=>String(x.id)===String(id)); if(!p) return; const item=state.cart.find(x=>String(x.id)===String(id)); item ? item.qty++ : state.cart.push({...p, qty:1}); saveCart(); toast("Produto adicionado ao carrinho"); };
+function saveCart(){ localStorage.setItem("cart", JSON.stringify(state.cart)); renderCart(); }
+function renderCart(){ const count=state.cart.reduce((s,i)=>s+i.qty,0); const total=state.cart.reduce((s,i)=>s+i.qty*i.price,0); if(qs("#cartCount")) qs("#cartCount").textContent=count; if(qs("#cartTotal")) qs("#cartTotal").textContent=money(total); const el=qs("#cartItems"); if(!el) return; el.innerHTML=state.cart.map(i=>`<div class="cart-line"><div><strong>${i.name}</strong><br><span class="muted">${money(i.price)}</span></div><div class="qty"><button onclick="qty(${i.id},-1)">-</button><b>${i.qty}</b><button onclick="qty(${i.id},1)">+</button></div></div>`).join("") || `<p class="muted">Seu carrinho está vazio.</p>`; }
+window.qty=(id,delta)=>{ const i=state.cart.find(x=>String(x.id)===String(id)); if(!i)return; i.qty+=delta; if(i.qty<=0) state.cart=state.cart.filter(x=>String(x.id)!==String(id)); saveCart(); };
+async function finishOrder(){ if(!state.cart.length) return toast("Adicione produtos ao carrinho."); const payload={ customer_name:qs("#customerName").value, customer_phone:qs("#customerPhone").value, customer_address:qs("#customerAddress").value, payment_method:qs("#paymentMethod").value, notes:qs("#orderNotes").value, total:state.cart.reduce((s,i)=>s+i.qty*i.price,0), items:state.cart.map(i=>({product_id:i.id, quantity:i.qty, price:i.price, name:i.name}))}; if(!payload.customer_name) return toast("Informe seu nome."); try{ await apiFetch("/orders", {method:"POST", body:JSON.stringify(payload)}); state.cart=[]; saveCart(); qs("#cartDrawer")?.classList.remove("open"); toast("Pedido enviado com sucesso!"); }catch(e){ toast("Não consegui enviar. Confira o backend/endpoint de pedidos."); console.error(e); } }
+
+async function loadOrders(){ const raw=await safeGet(["/orders", "/pedidos"]); state.orders=(Array.isArray(raw)?raw:(raw.orders||[])).map(normOrder); }
+function renderAdmin(){ if(!qs("#kanbanBoard")) return; const orders=state.orders; const revenue=orders.reduce((s,o)=>s+o.total,0); qs("#kpiOrders").textContent=orders.length; qs("#kpiRevenue").textContent=money(revenue); qs("#kpiPending").textContent=orders.filter(o=>["pending","novo","recebido"].includes(o.status)).length; qs("#kpiAvg").textContent=money(orders.length?revenue/orders.length:0); const cols=[['pending','Novos'],['preparing','Preparando'],['ready','Prontos'],['delivered','Entregues']]; qs("#kanbanBoard").innerHTML=cols.map(([key,label])=>`<div class="kanban-col"><h3>${label}</h3>${orders.filter(o=>mapStatus(o.status)===key).map(orderCard).join("")||'<p class="muted">Sem pedidos</p>'}</div>`).join(""); }
+function mapStatus(s){ if(["novo","recebido","pending"].includes(s))return"pending"; if(["preparo","preparing","em preparo"].includes(s))return"preparing"; if(["pronto","ready"].includes(s))return"ready"; if(["entregue","delivered","finalizado"].includes(s))return"delivered"; return"pending"; }
+function orderCard(o){ return `<article class="order-card"><h4>#${o.id} • ${o.customer_name}</h4><p>${money(o.total)} ${o.customer_phone?`• ${o.customer_phone}`:''}</p><select class="status-select" onchange="updateOrderStatus('${o.id}',this.value)"><option value="pending">Novo</option><option value="preparing">Preparando</option><option value="ready">Pronto</option><option value="delivered">Entregue</option></select></article>`; }
+window.updateOrderStatus=async(id,status)=>{ try{ await apiFetch(`/orders/${id}`,{method:"PATCH",body:JSON.stringify({status})}); toast("Status atualizado"); await initAdmin(); }catch(e){ toast("Endpoint de status não encontrado no backend atual."); } };
+async function initAdmin(){ await loadOrders(); renderAdmin(); renderReport(); }
+function renderReport(){ if(!qs("#reportOrders"))return; const orders=state.orders, revenue=orders.reduce((s,o)=>s+o.total,0); qs("#reportOrders").textContent=orders.length; qs("#reportRevenue").textContent=money(revenue); qs("#reportList").innerHTML=orders.map(o=>`<div class="cart-line"><strong>#${o.id} ${o.customer_name}</strong><span>${money(o.total)}</span></div>`).join(""); }
+async function initProductAdmin(){ const box=qs("#adminProducts"); if(!box) return; await loadProducts(); box.innerHTML=state.products.map(p=>`<article class="product-card"><div class="product-img" style="background-image:url('${productImage(p)}')"></div><div class="product-info"><h3>${p.name}</h3><p>${p.category}</p><b>${money(p.price)}</b></div></article>`).join(""); const form=qs("#productForm"); form.onsubmit=async e=>{ e.preventDefault(); const fd=new FormData(form); const obj=Object.fromEntries(fd.entries()); if(obj.image && obj.image.size){ try{ await apiFetch("/products",{method:"POST",body:fd}); }catch(err){ toast("Upload não suportado pelo backend atual. Use URL da imagem."); return; } } else { delete obj.image; obj.price=Number(obj.price); try{ await apiFetch("/products",{method:"POST",body:JSON.stringify(obj)}); }catch(err){ toast("Endpoint de cadastro não encontrado no backend atual."); return; } } toast("Produto salvo"); form.reset(); await initProductAdmin(); }; }
+async function initClient(){ await loadProducts(); renderCategories(); renderProducts(); renderCart(); qs("#searchInput")?.addEventListener("input",renderProducts); qs("#openCartBtn")?.addEventListener("click",()=>qs("#cartDrawer").classList.add("open")); qs("#closeCartBtn")?.addEventListener("click",()=>qs("#cartDrawer").classList.remove("open")); qs("#finishOrderBtn")?.addEventListener("click",finishOrder); }
+(async()=>{ try{ if(qs("#productGrid")) await initClient(); if(qs("#kanbanBoard")){ await initAdmin(); qs("#refreshAdminBtn")?.addEventListener("click",initAdmin); setInterval(initAdmin,15000); } await initProductAdmin(); if(qs("#reportOrders")){ await loadOrders(); renderReport(); } }catch(e){ console.error(e); toast("Não consegui carregar dados da API. Mantive o layout funcionando."); } })();
