@@ -1,138 +1,289 @@
-const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-const toast=t=>{const e=$('#toast'); if(!e)return alert(t); e.textContent=t; e.classList.add('show'); setTimeout(()=>e.classList.remove('show'),2600)};
-let state={products:[],orders:[],cart:JSON.parse(localStorage.getItem('cart')||'[]'),category:'Todos',deliveryType:'retirada'};
-function endpointVariants(path){
-  const clean=path.startsWith('/')?path:'/'+path;
-  const set=new Set([clean]);
-  if(!clean.startsWith('/api/')) set.add('/api'+clean);
-  if(clean.startsWith('/api/')) set.add(clean.replace('/api',''));
-  return [...set];
-}
-async function api(path,opt={}){
-  const paths=endpointVariants(path);
-  let err;
-  for(const p of paths){
-    try{
-      const r=await fetch(p,{...opt,headers:opt.body instanceof FormData?{}:{'Content-Type':'application/json',...(opt.headers||{})}});
-      if(r.ok)return r.status===204?null:await r.json();
-      let body='';try{body=await r.text()}catch(_){}
-      err=new Error(r.status+' '+p+(body?' :: '+body.slice(0,240):''));
-    }catch(e){err=e}
-  }
-  throw err;
-}
-async function getAny(paths){
-  for(const p of paths){
-    try{return await api(p)}catch(e){console.warn('Endpoint não respondeu:',p,e.message)}
-  }
-  return [];
-}
-function normProduct(p){return{id:p.id,name:p.name||p.nome||'Produto',price:Number(p.price??p.preco??0),category:p.category||p.categoria||p.category_name||'Outros',description:p.description||p.descricao||'',image_url:p.image_url||p.image||p.imagem||'',active:p.active!==false}}
-function normOrder(o){return{id:o.id,customer_name:o.customer_name||o.nome_cliente||o.name||'Cliente',customer_phone:o.customer_phone||o.phone||'',customer_address:o.customer_address||o.address||'',payment_method:o.payment_method||o.payment||'',total:Number(o.total||o.total_amount||0),status:String(o.status||'pending').toLowerCase(),created_at:o.created_at||'',items:o.items||o.order_items||[]}}
-function img(p){if(p.image_url)return p.image_url;return ''}
+const $=(s)=>document.querySelector(s);
+const $$=(s)=>Array.from(document.querySelectorAll(s));
+const money=(v)=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const STORAGE_KEY='delivery_pro_cart_azul_v1';
 
-function setupDeliveryChoice(){
-  const box=$('#deliveryChoice');
-  const address=$('#customerAddress');
-  if(!box||!address)return;
-  const apply=()=>{
-    $$('.delivery-option').forEach(b=>b.classList.toggle('active',b.dataset.type===state.deliveryType));
-    if(state.deliveryType==='entrega'){
-      address.classList.remove('hidden');
-      address.placeholder='Endereço completo para entrega';
-    }else{
-      address.classList.add('hidden');
-      address.value='';
-      address.placeholder='Endereço completo para entrega';
-    }
+let state={
+  products:[],
+  categories:[],
+  cart:JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]'),
+  category:'Todos',
+  deliveryType:'retirada'
+};
+
+function toast(msg){
+  const el=$('#toast');
+  if(!el){ alert(msg); return; }
+  el.textContent=msg;
+  el.classList.add('open');
+  clearTimeout(window.__toastTimer);
+  window.__toastTimer=setTimeout(()=>el.classList.remove('open'),2800);
+}
+
+async function requestJSON(url,opt={}){
+  const res=await fetch(url,{
+    ...opt,
+    headers:{'Content-Type':'application/json',...(opt.headers||{})}
+  });
+  if(!res.ok){
+    const txt=await res.text().catch(()=>'');
+    throw new Error(`${res.status} ${url} ${txt}`);
+  }
+  return res.json().catch(()=>({}));
+}
+
+function escapeHtml(v=''){
+  return String(v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+}
+
+function escapeAttr(v=''){ return escapeHtml(v).replaceAll('`','&#096;'); }
+
+function normProduct(p){
+  return {
+    id:p.id,
+    name:p.name||p.title||p.nome||'Produto',
+    description:p.description||p.descricao||'Produto especial da casa.',
+    price:Number(p.price||p.preco||p.valor||0),
+    category:p.category_name||p.category||p.categoria||(p.category_obj&&p.category_obj.name)||'Outros',
+    category_id:p.category_id||p.categoria_id||null,
+    image_url:p.image_url||p.image||p.foto||p.photo_url||'',
+    active:p.active
   };
-  $$('.delivery-option').forEach(b=>b.onclick=()=>{state.deliveryType=b.dataset.type;apply()});
-  apply();
+}
+
+function img(p){
+  const u=p.image_url||'';
+  if(!u) return '';
+  if(u.startsWith('http')||u.startsWith('/')||u.startsWith('data:')) return u;
+  return `/static/uploads/${u}`;
+}
+
+async function loadCategories(){
+  try{
+    const raw=await requestJSON('/api/categories');
+    state.categories=Array.isArray(raw)?raw:(raw.categories||raw.data||[]);
+  }catch(e){
+    console.warn('Falha ao carregar categorias',e);
+    state.categories=[];
+  }
 }
 
 async function loadProducts(){
-  const raw=await getAny(['/products','/produtos','/menu','/cardapio','/items','/product','/api/products','/api/produtos','/api/menu','/api/cardapio']);
-  const arr=Array.isArray(raw)?raw:(raw.products||raw.produtos||raw.items||raw.data||raw.results||[]);
-  state.products=arr.map(normProduct).filter(p=>p.active!==false);
-  if(!state.products.length){
-    state.products=[{id:'demo-x-tudo',name:'X-Tudo',description:'Pão, hambúrguer, queijo, presunto, ovo e salada.',price:25,category:'Lanches',image_url:'',active:true}];
-    toast('Produtos não carregaram da API. Mostrando item temporário para teste visual.');
+  renderProductSkeleton();
+  try{
+    const raw=await requestJSON('/api/products');
+    const arr=Array.isArray(raw)?raw:(raw.products||raw.data||raw.results||[]);
+    state.products=arr.map(normProduct).filter(p=>p.active!==false);
+  }catch(e){
+    console.error(e);
+    state.products=[];
+    toast('Não consegui carregar produtos em /api/products.');
   }
+  renderCats();
+  renderStore();
 }
-async function loadOrders(){
-  const raw=await getAny(['/orders','/pedidos','/api/orders','/api/pedidos']);
-  const arr=Array.isArray(raw)?raw:(raw.orders||raw.pedidos||raw.data||raw.results||[]);
-  state.orders=arr.map(normOrder);
-}
-function renderCats(){const el=$('#categoryList');if(!el)return;const cats=['Todos',...new Set(state.products.map(p=>p.category).filter(Boolean))];el.innerHTML=cats.map(c=>`<button class="cat ${c===state.category?'active':''}" data-c="${c}">${c}</button>`).join('');$$('.cat').forEach(b=>b.onclick=()=>{state.category=b.dataset.c;renderCats();renderStore()})}
-function renderStore(){const grid=$('#productGrid');if(!grid)return;const q=($('#searchInput')?.value||'').toLowerCase();const list=state.products.filter(p=>(state.category==='Todos'||p.category===state.category)&&`${p.name} ${p.description} ${p.category}`.toLowerCase().includes(q));$('#productCounter').textContent=list.length+' itens';grid.innerHTML=list.map(p=>`<article class="product-card"><div class="p-img" ${img(p)?`style="background-image:url('${img(p)}')"`:''}>${img(p)?'':'🍔'}</div><div class="p-info"><h3>${p.name}</h3><p>${p.description||'Produto especial da casa.'}</p><div class="price-row"><b class="price">${money(p.price)}</b><button class="btn primary" onclick="addCart('${p.id}')">Adicionar</button></div></div></article>`).join('')||'<div class="table-card">Nenhum produto encontrado.</div>'}
-window.addCart=id=>{const p=state.products.find(x=>String(x.id)===String(id));if(!p)return;const i=state.cart.find(x=>String(x.id)===String(id));i?i.qty++:state.cart.push({...p,qty:1});saveCart();toast('Produto adicionado')};
-function saveCart(){localStorage.setItem('cart',JSON.stringify(state.cart));renderCart()}
-function renderCart(){const c=state.cart.reduce((s,i)=>s+i.qty,0),t=state.cart.reduce((s,i)=>s+i.qty*i.price,0);if($('#cartCount'))$('#cartCount').textContent=c;if($('#cartTotal'))$('#cartTotal').textContent=money(t);const el=$('#cartItems');if(!el)return;el.innerHTML=state.cart.map(i=>`<div class="cart-line"><div><b>${i.name}</b><br><span class="muted">${money(i.price)}</span></div><div class="qty"><button onclick="qty('${i.id}',-1)">-</button><b>${i.qty}</b><button onclick="qty('${i.id}',1)">+</button></div></div>`).join('')||'<p class="muted">Carrinho vazio.</p>'}
-window.qty=(id,d)=>{const i=state.cart.find(x=>String(x.id)===String(id));if(!i)return;i.qty+=d;if(i.qty<=0)state.cart=state.cart.filter(x=>String(x.id)!==String(id));saveCart()}
-async function finishOrder(){
-  if(!state.cart.length)return toast('Adicione produtos ao carrinho.');
-  const name=$('#customerName').value.trim();
-  const phone=$('#customerPhone').value.trim();
-  const address=$('#customerAddress').value.trim();
-  const payment=$('#paymentMethod').value;
-  const notes=$('#orderNotes').value.trim();
-  const total=state.cart.reduce((s,i)=>s+i.qty*i.price,0);
-  const items=state.cart.map(i=>({product_id:i.id,quantity:i.qty,price:i.price,name:i.name}));
-  if(!name)return toast('Informe o nome.');
-  if(!phone)return toast('Informe o WhatsApp.');
-  if(state.deliveryType==='entrega'&&!address)return toast('Informe o endereço para entrega.');
 
-  const finalAddress=state.deliveryType==='entrega'?address:'Retirada no balcão';
-  const originalPayload={
+function renderProductSkeleton(){
+  const grid=$('#productGrid');
+  if(!grid) return;
+  grid.innerHTML=Array.from({length:6}).map(()=>`
+    <article class="product-card">
+      <div class="p-img skeleton"></div>
+      <div class="p-info">
+        <div class="skeleton" style="height:24px;border-radius:10px;margin-bottom:10px"></div>
+        <div class="skeleton" style="height:44px;border-radius:10px;margin-bottom:18px"></div>
+        <div class="skeleton" style="height:44px;border-radius:14px"></div>
+      </div>
+    </article>
+  `).join('');
+}
+
+function renderCats(){
+  const el=$('#categoryList');
+  if(!el) return;
+  const fromProducts=[...new Set(state.products.map(p=>p.category).filter(Boolean))];
+  const fromApi=state.categories.map(c=>c.name||c.nome).filter(Boolean);
+  const cats=['Todos',...new Set([...fromApi,...fromProducts])];
+  el.innerHTML=cats.map(c=>`<button class="cat ${c===state.category?'active':''}" data-c="${escapeAttr(c)}">${escapeHtml(c)}</button>`).join('');
+  $$('.cat').forEach(b=>b.onclick=()=>{
+    state.category=b.dataset.c;
+    renderCats();
+    renderStore();
+  });
+}
+
+function renderStore(){
+  const grid=$('#productGrid');
+  if(!grid) return;
+  const q=($('#searchInput')?.value||'').trim().toLowerCase();
+  const list=state.products.filter(p=>{
+    const matchCat=state.category==='Todos'||p.category===state.category;
+    const matchSearch=`${p.name} ${p.description} ${p.category}`.toLowerCase().includes(q);
+    return matchCat&&matchSearch;
+  });
+
+  const counter=$('#productCounter');
+  if(counter) counter.textContent=`${list.length} ${list.length===1?'item':'itens'}`;
+
+  grid.innerHTML=list.map(p=>`
+    <article class="product-card">
+      <div class="p-img" ${img(p)?`style="background-image:url('${escapeAttr(img(p))}')"`:''}>${img(p)?'':'🍔'}</div>
+      <div class="p-info">
+        <h3>${escapeHtml(p.name)}</h3>
+        <p>${escapeHtml(p.description||'Produto especial da casa.')}</p>
+        <div class="price-row">
+          <b class="price">${money(p.price)}</b>
+          <button class="btn primary" type="button" onclick="addCart('${String(p.id).replaceAll("'","\\'")}')">Adicionar</button>
+        </div>
+      </div>
+    </article>
+  `).join('') || `<div class="empty-card"><h3>Nenhum produto encontrado</h3><p>Teste outra busca ou categoria.</p></div>`;
+}
+
+window.addCart=(id)=>{
+  const p=state.products.find(x=>String(x.id)===String(id));
+  if(!p) return;
+  const i=state.cart.find(x=>String(x.id)===String(id));
+  if(i) i.qty++;
+  else state.cart.push({...p,qty:1});
+  saveCart();
+  toast('Produto adicionado ao carrinho');
+};
+
+window.changeQty=(id,delta)=>{
+  const i=state.cart.find(x=>String(x.id)===String(id));
+  if(!i) return;
+  i.qty+=delta;
+  if(i.qty<=0) state.cart=state.cart.filter(x=>String(x.id)!==String(id));
+  saveCart();
+};
+
+function saveCart(){
+  localStorage.setItem(STORAGE_KEY,JSON.stringify(state.cart));
+  renderCart();
+}
+
+function renderCart(){
+  const count=state.cart.reduce((s,i)=>s+Number(i.qty||0),0);
+  const total=state.cart.reduce((s,i)=>s+(Number(i.price||0)*Number(i.qty||0)),0);
+  const countEl=$('#cartCount');
+  const totalEl=$('#cartTotal');
+  if(countEl) countEl.textContent=count;
+  if(totalEl) totalEl.textContent=money(total);
+
+  const box=$('#cartItems');
+  if(!box) return;
+  box.innerHTML=state.cart.map(i=>`
+    <div class="cart-line">
+      <div>
+        <b>${escapeHtml(i.name)}</b>
+        <span class="muted">${money(i.price)} cada</span>
+      </div>
+      <div class="qty">
+        <button type="button" onclick="changeQty('${String(i.id).replaceAll("'","\\'")}',-1)">−</button>
+        <strong>${i.qty}</strong>
+        <button type="button" onclick="changeQty('${String(i.id).replaceAll("'","\\'")}',1)">+</button>
+      </div>
+    </div>
+  `).join('') || `<div class="empty-card"><h3>Carrinho vazio</h3><p>Adicione um produto para continuar.</p></div>`;
+}
+
+function openCart(){
+  $('#cartDrawer')?.classList.add('open');
+  $('#cartDrawer')?.setAttribute('aria-hidden','false');
+  $('#overlay')?.classList.add('open');
+}
+
+function closeCart(){
+  $('#cartDrawer')?.classList.remove('open');
+  $('#cartDrawer')?.setAttribute('aria-hidden','true');
+  $('#overlay')?.classList.remove('open');
+}
+
+function setupDeliveryChoice(){
+  $$('.delivery-option').forEach(btn=>{
+    btn.onclick=()=>{
+      state.deliveryType=btn.dataset.delivery;
+      $$('.delivery-option').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      const address=$('#customerAddress');
+      if(address) address.classList.toggle('hidden',state.deliveryType!=='entrega');
+    };
+  });
+}
+
+async function finishOrder(){
+  if(!state.cart.length){ toast('Adicione produtos ao carrinho.'); return; }
+
+  const name=$('#customerName')?.value.trim();
+  const phone=$('#customerPhone')?.value.trim();
+  const address=$('#customerAddress')?.value.trim();
+  const payment=$('#paymentMethod')?.value||'Pix';
+  const notes=$('#orderNotes')?.value.trim()||'';
+
+  if(!name){ toast('Informe o nome.'); return; }
+  if(!phone){ toast('Informe o telefone.'); return; }
+  if(state.deliveryType==='entrega'&&!address){ toast('Informe o endereço para entrega.'); return; }
+
+  const total=state.cart.reduce((s,i)=>s+(Number(i.price||0)*Number(i.qty||0)),0);
+
+  const payload={
     customer_name:name,
-    customer_phone:phone,
-    customer_address:finalAddress,
+    phone:phone,
+    address:state.deliveryType==='entrega'?address:'Retirada no balcão',
+    delivery_option:state.deliveryType,
     payment_method:payment,
-    notes,
-    total,
-    items
+    notes:notes,
+    total:total,
+    items:state.cart.map(i=>({
+      product_id:i.id,
+      id:i.id,
+      quantity:i.qty,
+      qty:i.qty,
+      price:i.price,
+      unit_price:i.price,
+      name:i.name
+    }))
   };
 
-  const attempts=[
-    originalPayload,
-    {...originalPayload, delivery_type:state.deliveryType},
-    {...originalPayload, delivery_method:state.deliveryType, address:finalAddress},
-    {name,phone,address:finalAddress,delivery_type:state.deliveryType,payment_method:payment,notes,total,items},
-    {customer_name:name,customer_phone:phone,customer_address:finalAddress,payment_method:payment,notes,total_amount:total,items}
-  ];
+  const btn=$('#finishOrderBtn');
+  if(btn){ btn.disabled=true; btn.textContent='Enviando pedido...'; }
 
-  let lastErr=null;
-  const orderPaths=['/orders','/pedidos','/api/orders','/api/pedidos'];
-  for(const path of orderPaths){
-    for(const payload of attempts){
-      try{
-        await api(path,{method:'POST',body:JSON.stringify(payload)});
-        state.cart=[];
-        saveCart();
-        $('#cartDrawer').classList.remove('open');
-        $('#customerAddress').value='';
-        $('#orderNotes').value='';
-        toast('Pedido enviado com sucesso!');
-        return;
-      }catch(e){lastErr=e;console.error('Falha ao enviar pedido:',path,payload,e)}
-    }
+  try{
+    await requestJSON('/api/order',{method:'POST',body:JSON.stringify(payload)});
+    state.cart=[];
+    saveCart();
+    closeCart();
+    ['#customerName','#customerPhone','#customerAddress','#orderNotes'].forEach(s=>{
+      const el=$(s);
+      if(el) el.value='';
+    });
+    toast('Pedido enviado com sucesso!');
+  }catch(e){
+    console.error(e);
+    toast('Erro ao enviar pedido. Vou precisar ver o log do Render.');
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent='Finalizar pedido'; }
   }
-  toast('Erro ao enviar pedido. Veja o log do Render.');
-  console.error('Último erro ao enviar pedido:',lastErr);
 }
-function st(s){if(['novo','recebido','pending'].includes(s))return'pending';if(['preparo','preparing','em preparo'].includes(s))return'preparing';if(['pronto','ready'].includes(s))return'ready';if(['entregue','delivered','finalizado'].includes(s))return'delivered';return'pending'}
-function orderCard(o){return`<article class="order-card"><h4>#${o.id} ${o.customer_name}</h4><p>${money(o.total)} ${o.customer_phone?' • '+o.customer_phone:''}</p><select class="status-select" onchange="setStatus('${o.id}',this.value)"><option value="pending" ${st(o.status)==='pending'?'selected':''}>Novo</option><option value="preparing" ${st(o.status)==='preparing'?'selected':''}>Preparando</option><option value="ready" ${st(o.status)==='ready'?'selected':''}>Pronto</option><option value="delivered" ${st(o.status)==='delivered'?'selected':''}>Entregue</option></select></article>`}
-function renderAdmin(){if(!$('#kanbanBoard'))return;const rev=state.orders.reduce((s,o)=>s+o.total,0);$('#kpiOrders').textContent=state.orders.length;$('#kpiRevenue').textContent=money(rev);$('#kpiPending').textContent=state.orders.filter(o=>st(o.status)==='pending').length;$('#kpiAvg').textContent=money(state.orders.length?rev/state.orders.length:0);const cols=[['pending','Novos'],['preparing','Preparando'],['ready','Prontos'],['delivered','Entregues']];$('#kanbanBoard').innerHTML=cols.map(([k,n])=>`<div class="kanban-col"><h3>${n}</h3>${state.orders.filter(o=>st(o.status)===k).map(orderCard).join('')||'<p class="muted">Sem pedidos</p>'}</div>`).join('')}
-window.setStatus=async(id,status)=>{try{await api('/orders/'+id,{method:'PATCH',body:JSON.stringify({status})});toast('Status atualizado');await initAdmin()}catch(e){toast('Seu backend ainda não tem atualização de status.')}};
-function fillForm(p={}){const f=$('#productForm');if(!f)return;['id','name','price','category','image_url','description'].forEach(k=>f.elements[k]&&(f.elements[k].value=p[k]||''));if(f.elements.active)f.elements.active.checked=p.active!==false;window.scrollTo({top:0,behavior:'smooth'})}
-function renderProductAdmin(){const box=$('#adminProducts');if(!box)return;const q=($('#adminProductSearch')?.value||'').toLowerCase(),cat=$('#adminCategoryFilter')?.value||'';const cats=[...new Set(state.products.map(p=>p.category).filter(Boolean))];$('#adminCategoryFilter').innerHTML='<option value="">Todas categorias</option>'+cats.map(c=>`<option ${cat===c?'selected':''}>${c}</option>`).join('');const list=state.products.filter(p=>(!cat||p.category===cat)&&`${p.name} ${p.category}`.toLowerCase().includes(q));box.innerHTML=list.map(p=>`<div class="product-row"><div class="thumb" ${img(p)?`style="background-image:url('${img(p)}')"`:''}>${img(p)?'':'🍔'}</div><div><b>${p.name}</b><br><span class="muted">${p.category||'Sem categoria'}</span></div><b class="hide-mobile">${money(p.price)}</b><span class="hide-mobile">${p.active!==false?'Ativo':'Inativo'}</span><div class="row-actions"><button onclick='editProduct(${JSON.stringify(p).replaceAll("'","&apos;")})'>Editar</button><button onclick="delProduct('${p.id}')">Excluir</button></div></div>`).join('')||'<p class="muted">Nenhum produto.</p>'}
-window.editProduct=p=>fillForm(p);
-window.delProduct=async id=>{if(!confirm('Excluir produto?'))return;try{await api('/products/'+id,{method:'DELETE'});toast('Produto excluído');await initProducts()}catch(e){toast('Seu backend ainda não tem DELETE de produto.')}};
-async function saveProduct(e){e.preventDefault();const f=e.target,fd=new FormData(f),id=fd.get('id');let body;if(fd.get('image')&&fd.get('image').size){body=fd}else{const o=Object.fromEntries(fd.entries());delete o.image;o.price=Number(o.price);o.active=!!f.elements.active?.checked;body=JSON.stringify(o)}try{await api('/products'+(id?'/'+id:''),{method:id?'PUT':'POST',body});toast(id?'Produto atualizado':'Produto cadastrado');f.reset();if(f.elements.active)f.elements.active.checked=true;await initProducts()}catch(err){console.error(err);toast('Endpoint de produtos não aceitou salvar. Não mexi no backend.')}}
-function renderReport(){if(!$('#reportOrders'))return;const rev=state.orders.reduce((s,o)=>s+o.total,0);$('#reportOrders').textContent=state.orders.length;$('#reportRevenue').textContent=money(rev);$('#reportList').innerHTML=state.orders.map(o=>`<div class="cart-line"><b>#${o.id} ${o.customer_name}</b><span>${money(o.total)}</span></div>`).join('')||'<p class="muted">Sem pedidos.</p>'}
-async function initClient(){await loadProducts();renderCats();renderStore();renderCart();setupDeliveryChoice();$('#searchInput')?.addEventListener('input',renderStore);$('#clearSearch')?.addEventListener('click',()=>{$('#searchInput').value='';renderStore()});$('#openCartBtn')?.addEventListener('click',()=>$('#cartDrawer').classList.add('open'));$('#closeCartBtn')?.addEventListener('click',()=>$('#cartDrawer').classList.remove('open'));$('#finishOrderBtn')?.addEventListener('click',finishOrder)}
-async function initAdmin(){await loadOrders();renderAdmin();renderReport()}
-async function initProducts(){await loadProducts();renderProductAdmin();$('#adminProductSearch')?.addEventListener('input',renderProductAdmin);$('#adminCategoryFilter')?.addEventListener('change',renderProductAdmin);$('#productForm')&&($('#productForm').onsubmit=saveProduct);$('#newProductBtn')&&($('#newProductBtn').onclick=()=>fillForm({active:true}))}
-(async()=>{try{if($('#productGrid'))await initClient();if($('#kanbanBoard')){await initAdmin();$('#refreshAdminBtn')?.addEventListener('click',initAdmin);setInterval(initAdmin,15000)}if($('#adminProducts'))await initProducts();if($('#reportOrders')){await loadOrders();renderReport()}}catch(e){console.error(e);toast('Não consegui carregar a API. Veja os logs do Render.')}})();
+
+function initClient(){
+  loadCategories().then(loadProducts);
+  renderCart();
+  setupDeliveryChoice();
+
+  $('#searchInput')?.addEventListener('input',renderStore);
+  $('#clearSearch')?.addEventListener('click',()=>{
+    const el=$('#searchInput');
+    if(el){el.value='';renderStore();}
+  });
+  $('#openCartBtn')?.addEventListener('click',openCart);
+  $('#heroCartBtn')?.addEventListener('click',openCart);
+  $('#closeCartBtn')?.addEventListener('click',closeCart);
+  $('#overlay')?.addEventListener('click',closeCart);
+  $('#finishOrderBtn')?.addEventListener('click',finishOrder);
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  if($('#productGrid')) initClient();
+});

@@ -1,20 +1,9 @@
 {
   "name": "Delivery Lanchonete Pro",
-  "short_name": "DeliveryPro",
+  "short_name": "Delivery Pro",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#ff4d4f",
-  "icons": [
-    {
-      "src": "/static/favicon.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/static/favicon.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
-  ]
+  "background_color": "#07162e",
+  "theme_color": "#07162e",
+  "icons": []
 }

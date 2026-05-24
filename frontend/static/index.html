@@ -1,5 +1,125 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#ea1d2c"><title>Delivery Lanchonete Pro</title><link rel="manifest" href="manifest.webmanifest"><link rel="stylesheet" href="styles.css"></head><body class="client-page"><header class="client-top"><div><span class="mini">aberto agora</span><h1>Lanchonete Pro</h1><p>Peça rápido, acompanhe no carrinho e finalize sem complicação.</p></div><button class="cart-float-btn" id="openCartBtn">🛒 <b id="cartCount">0</b></button></header><main class="store"><section class="hero"><div><span>🔥 Promoção do dia</span><h2>Combos artesanais com entrega rápida</h2><p>Visual preparado para PWA, APK e cardápio mobile first.</p></div></section><section class="searchbar"><input id="searchInput" placeholder="Buscar lanche, bebida, combo..."><button id="clearSearch">Limpar</button></section><nav class="categories" id="categoryList"></nav><section class="store-head"><h2>Cardápio</h2><small id="productCounter"></small></section><section class="products" id="productGrid"></section></main><aside class="cart" id="cartDrawer"><div class="cart-box"><div class="cart-title"><h2>Seu carrinho</h2><button id="closeCartBtn">×</button></div><div id="cartItems"></div><div class="checkout"><div class="total"><span>Total</span><strong id="cartTotal">R$ 0,00</strong></div><input id="customerName" placeholder="Nome do cliente"><input id="customerPhone" placeholder="WhatsApp"><div class="delivery-choice" id="deliveryChoice">
-  <button type="button" class="delivery-option active" data-type="retirada">Retirada</button>
-  <button type="button" class="delivery-option" data-type="entrega">Entrega</button>
-</div>
-<input id="customerAddress" class="hidden" placeholder="Endereço completo para entrega"><select id="paymentMethod"><option>Pix</option><option>Cartão</option><option>Dinheiro</option></select><textarea id="orderNotes" placeholder="Observações, ponto da carne, retirar ingrediente..."></textarea><button class="btn primary" id="finishOrderBtn">Finalizar pedido</button></div></div></aside><div class="toast" id="toast"></div><script src="scripts.js"></script></body></html>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Delivery Lanchonete Pro</title>
+  <meta name="theme-color" content="#07162e">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-logo">🍔</div>
+      <div>
+        <strong>Lanchonete Pro</strong>
+        <span>Aberto agora • delivery premium</span>
+      </div>
+    </div>
+
+    <div class="search">
+      <span>🔎</span>
+      <input id="searchInput" type="search" placeholder="Buscar lanches, bebidas, porções..." autocomplete="off">
+      <button id="clearSearch" type="button">Limpar</button>
+    </div>
+
+    <button id="openCartBtn" class="cart-button" type="button">
+      🛒 <span>Carrinho</span> <b id="cartCount">0</b>
+    </button>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-content">
+        <span class="tag">Pedido rápido e fácil</span>
+        <h1>Seu cardápio digital moderno.</h1>
+        <p>Escolha seus produtos, selecione retirada ou entrega e finalize o pedido sem complicação.</p>
+        <div class="hero-actions">
+          <a href="#cardapio" class="primary-link">Ver cardápio</a>
+          <button id="heroCartBtn" class="secondary-link" type="button">Abrir carrinho</button>
+        </div>
+      </div>
+
+      <div class="hero-panel">
+        <span>Mais vendido</span>
+        <div>🍟</div>
+        <strong>Combos, lanches e bebidas</strong>
+        <p>Visual azul escuro premium, responsivo e pronto para evoluir para PWA.</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <span class="mini">Categorias</span>
+          <h2>Escolha por tipo</h2>
+        </div>
+      </div>
+      <div id="categoryList" class="category-list"></div>
+    </section>
+
+    <section id="cardapio" class="section">
+      <div class="section-head">
+        <div>
+          <span class="mini">Cardápio</span>
+          <h2>Produtos disponíveis</h2>
+        </div>
+        <span id="productCounter" class="counter">0 itens</span>
+      </div>
+      <div id="productGrid" class="product-grid"></div>
+    </section>
+  </main>
+
+  <div id="overlay" class="overlay"></div>
+
+  <aside id="cartDrawer" class="cart-drawer" aria-hidden="true">
+    <div class="cart-header">
+      <div>
+        <span class="mini">Finalização</span>
+        <h2>Seu carrinho</h2>
+      </div>
+      <button id="closeCartBtn" class="close-btn" type="button">×</button>
+    </div>
+
+    <div id="cartItems" class="cart-items"></div>
+
+    <div class="checkout">
+      <div class="total-row">
+        <span>Total</span>
+        <strong id="cartTotal">R$ 0,00</strong>
+      </div>
+
+      <input id="customerName" placeholder="Nome do cliente" autocomplete="name">
+      <input id="customerPhone" placeholder="Telefone / WhatsApp" autocomplete="tel">
+
+      <div class="delivery-choice">
+        <button type="button" class="delivery-option active" data-delivery="retirada">
+          <strong>Retirada</strong>
+          <span>Buscar no balcão</span>
+        </button>
+        <button type="button" class="delivery-option" data-delivery="entrega">
+          <strong>Entrega</strong>
+          <span>Receber em casa</span>
+        </button>
+      </div>
+
+      <textarea id="customerAddress" class="hidden" rows="3" placeholder="Endereço completo para entrega"></textarea>
+
+      <select id="paymentMethod">
+        <option value="Pix">Pix</option>
+        <option value="Cartão">Cartão</option>
+        <option value="Dinheiro">Dinheiro</option>
+      </select>
+
+      <textarea id="orderNotes" rows="3" placeholder="Observações, retirar ingrediente, ponto da carne..."></textarea>
+
+      <button id="finishOrderBtn" class="finish-btn" type="button">Finalizar pedido</button>
+    </div>
+  </aside>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="scripts.js"></script>
+</body>
+</html>
