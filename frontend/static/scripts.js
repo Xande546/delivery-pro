@@ -287,3 +287,214 @@ function initClient(){
 document.addEventListener('DOMContentLoaded',()=>{
   if($('#productGrid')) initClient();
 });
+
+
+/* =========================
+   ADMIN + HORÁRIO BRASIL
+   Mantém banco em UTC e mostra America/Sao_Paulo no painel.
+   ========================= */
+
+function formatarDataBR(dataUTC){
+  if(!dataUTC) return "-";
+  const d = new Date(dataUTC);
+  if(Number.isNaN(d.getTime())) return "-";
+
+  return d.toLocaleString("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
+function normOrder(o){
+  const items = Array.isArray(o.items) ? o.items : (Array.isArray(o.order_items) ? o.order_items : []);
+  return {
+    id: o.id,
+    customer_name: o.customer_name || o.name || o.cliente || "Cliente",
+    phone: o.phone || o.telefone || "",
+    address: o.address || o.endereco || "",
+    delivery_option: o.delivery_option || o.delivery_type || o.tipo_entrega || "",
+    payment_method: o.payment_method || o.payment || o.pagamento || "",
+    observations: o.observations || o.notes || o.observacao || "",
+    status: o.status || "novo",
+    total: Number(o.total || o.total_amount || o.amount || 0),
+    created_at: o.created_at || o.createdAt || o.date || "",
+    items
+  };
+}
+
+function statusLabel(status){
+  const s = String(status || "novo").toLowerCase();
+  const map = {
+    novo: "Novo",
+    pending: "Novo",
+    pendente: "Novo",
+    preparando: "Preparando",
+    preparing: "Preparando",
+    pronto: "Pronto",
+    ready: "Pronto",
+    finalizado: "Finalizado",
+    delivered: "Finalizado",
+    entregue: "Finalizado",
+    cancelado: "Cancelado",
+    canceled: "Cancelado"
+  };
+  return map[s] || status || "Novo";
+}
+
+function statusKey(status){
+  const s = String(status || "novo").toLowerCase();
+  if(["pending","pendente","novo"].includes(s)) return "novo";
+  if(["preparing","preparando"].includes(s)) return "preparando";
+  if(["ready","pronto"].includes(s)) return "pronto";
+  if(["delivered","entregue","finalizado"].includes(s)) return "finalizado";
+  if(["canceled","cancelado"].includes(s)) return "cancelado";
+  return "novo";
+}
+
+async function loadOrdersAdmin(){
+  try{
+    const raw = await requestJSON("/api/orders");
+    const arr = Array.isArray(raw) ? raw : (raw.orders || raw.data || raw.results || []);
+    state.orders = arr.map(normOrder);
+  }catch(e){
+    console.error("Falha ao carregar pedidos", e);
+    state.orders = [];
+    toast("Não consegui carregar pedidos do admin.");
+  }
+}
+
+function orderItemsText(order){
+  if(!order.items || !order.items.length) return "Sem itens detalhados";
+  return order.items.map(item => {
+    const name = item.product_name || item.name || item.product?.name || "Produto";
+    const qty = item.quantity || item.qty || 1;
+    return `${qty}x ${name}`;
+  }).join(", ");
+}
+
+function orderCard(order){
+  return `
+    <article class="order-card">
+      <div class="order-card-head">
+        <strong>#${escapeHtml(order.id)} ${escapeHtml(order.customer_name)}</strong>
+        <span>${escapeHtml(statusLabel(order.status))}</span>
+      </div>
+      <p class="muted">${escapeHtml(orderItemsText(order))}</p>
+      <p><b>Telefone:</b> ${escapeHtml(order.phone || "-")}</p>
+      <p><b>Entrega:</b> ${escapeHtml(order.delivery_option || "-")}</p>
+      <p><b>Endereço:</b> ${escapeHtml(order.address || "-")}</p>
+      <p><b>Pagamento:</b> ${escapeHtml(order.payment_method || "-")}</p>
+      <p><b>Horário:</b> ${formatarDataBR(order.created_at)}</p>
+      <div class="order-footer">
+        <strong>${money(order.total)}</strong>
+      </div>
+    </article>
+  `;
+}
+
+function renderAdmin(){
+  const board = $("#kanbanBoard");
+  if(!board) return;
+
+  const orders = state.orders || [];
+  const revenue = orders.reduce((s,o)=>s + Number(o.total || 0), 0);
+  const pending = orders.filter(o=>statusKey(o.status)==="novo").length;
+
+  const kpiOrders = $("#kpiOrders");
+  const kpiRevenue = $("#kpiRevenue");
+  const kpiPending = $("#kpiPending");
+  const kpiAvg = $("#kpiAvg");
+
+  if(kpiOrders) kpiOrders.textContent = orders.length;
+  if(kpiRevenue) kpiRevenue.textContent = money(revenue);
+  if(kpiPending) kpiPending.textContent = pending;
+  if(kpiAvg) kpiAvg.textContent = money(orders.length ? revenue / orders.length : 0);
+
+  const cols = [
+    ["novo", "Novos"],
+    ["preparando", "Preparando"],
+    ["pronto", "Prontos"],
+    ["finalizado", "Finalizados"]
+  ];
+
+  board.innerHTML = cols.map(([key,title]) => {
+    const list = orders.filter(o=>statusKey(o.status)===key);
+    return `
+      <section class="kanban-col">
+        <h3>${title}</h3>
+        ${list.length ? list.map(orderCard).join("") : '<p class="muted">Sem pedidos</p>'}
+      </section>
+    `;
+  }).join("");
+}
+
+function renderReport(){
+  if(!$("#reportOrders") && !$("#reportRevenue") && !$("#reportList")) return;
+
+  const orders = state.orders || [];
+  const revenue = orders.reduce((s,o)=>s + Number(o.total || 0), 0);
+
+  const reportOrders = $("#reportOrders");
+  const reportRevenue = $("#reportRevenue");
+  const reportBest = $("#reportBest");
+  const reportList = $("#reportList");
+
+  if(reportOrders) reportOrders.textContent = orders.length;
+  if(reportRevenue) reportRevenue.textContent = money(revenue);
+
+  const products = {};
+  orders.forEach(o => {
+    (o.items || []).forEach(item => {
+      const name = item.product_name || item.name || item.product?.name || "Produto";
+      const qty = Number(item.quantity || item.qty || 1);
+      products[name] = (products[name] || 0) + qty;
+    });
+  });
+
+  const best = Object.entries(products).sort((a,b)=>b[1]-a[1])[0];
+  if(reportBest) reportBest.textContent = best ? `${best[0]} (${best[1]})` : "-";
+
+  if(reportList){
+    reportList.innerHTML = orders.map(o => `
+      <div class="cart-line">
+        <div>
+          <b>#${escapeHtml(o.id)} ${escapeHtml(o.customer_name)}</b>
+          <span class="muted">${formatarDataBR(o.created_at)}</span>
+        </div>
+        <strong>${money(o.total)}</strong>
+      </div>
+    `).join("") || '<p class="muted">Sem pedidos.</p>';
+  }
+}
+
+async function initAdmin(){
+  await loadOrdersAdmin();
+  renderAdmin();
+  renderReport();
+
+  const refreshBtn = $("#refreshAdminBtn");
+  if(refreshBtn && !refreshBtn.dataset.bound){
+    refreshBtn.dataset.bound = "1";
+    refreshBtn.addEventListener("click", initAdmin);
+  }
+}
+
+/* Corrige datas UTC já renderizadas em elementos com data-created-at, se existirem */
+function convertExistingUtcDates(){
+  $$("[data-created-at]").forEach(el=>{
+    const raw = el.getAttribute("data-created-at");
+    el.textContent = formatarDataBR(raw);
+  });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  if($("#kanbanBoard") || $("#reportOrders") || $("#reportRevenue") || $("#reportList")){
+    initAdmin();
+    setInterval(initAdmin, 15000);
+  }
+  convertExistingUtcDates();
+});
